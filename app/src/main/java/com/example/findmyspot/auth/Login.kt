@@ -46,6 +46,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat.startActivity
+import com.example.findmyspot.activities.Home
 import com.example.findmyspot.ui.theme.FindMySpotTheme
 
 class Login : ComponentActivity() {
@@ -116,7 +117,7 @@ fun LoginComponent() {
             visualTransformation = PasswordVisualTransformation(),
         )
         Spacer(modifier = Modifier.height(10.dp))
-        Button(onClick = { logIn(emailInputValue, passwordInputValue) },
+        Button(onClick = { logIn(emailInputValue, passwordInputValue, context)  },
             modifier = Modifier.align(CenterHorizontally),
             colors = ButtonDefaults.buttonColors(primaryColor)
             ) {
@@ -137,15 +138,18 @@ fun LoginComponent() {
         }
     }
 
-private fun logIn(email:String, password:String) {
+private fun logIn(email:String, password:String, context: Context) {
     println("Estoy iniciando sesion con el email: $email y el password: $password")
+    val intent = Intent(context, Home::class.java)
+    context.startActivity(intent)
+
 }
 
 private fun openAccountRegister(context:Context) {
     val intent = Intent(context, Register::class.java)
     context.startActivity(intent)
-}
 
+}
 @Preview(showBackground = true)
 @Composable
 fun GreetingPreview() {
