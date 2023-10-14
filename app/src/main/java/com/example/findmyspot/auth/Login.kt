@@ -53,107 +53,113 @@ class Login : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
+            FindMySpotTheme() {
+                LoginComponent()
+            }
+        }
+    }
+
+    private fun logIn(email:String, password:String, context: Context) {
+        println("Estoy iniciando sesion con el email: $email y el password: $password")
+        val intent = Intent(context, Home::class.java)
+        context.startActivity(intent)
+        finish()
+    }
+    private fun openAccountRegister(context:Context) {
+        val intent = Intent(context, Register::class.java)
+        context.startActivity(intent)
+    }
+
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    fun LoginComponent() {
+        val primaryColor = Color(0xFF228B22) // Puedes definir el color aquí o usar uno de los colores personalizados definidos anteriormente
+        var emailInputValue by remember { mutableStateOf("") }
+        var passwordInputValue by remember { mutableStateOf("") }
+        val context = LocalContext.current
+
+        val textStyle = TextStyle(
+            color = primaryColor,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold
+        )
+
+        val textFieldColors = TextFieldDefaults.outlinedTextFieldColors(
+            focusedBorderColor = primaryColor,
+            unfocusedBorderColor = Color.Gray,
+            focusedLabelColor = primaryColor
+        )
+
+        Text(text = "FindMySpot", fontSize = 40.sp, modifier =
+        Modifier
+            .fillMaxWidth()
+            .padding(20.dp)
+            .wrapContentHeight(align = Alignment.Top),
+            textAlign = TextAlign.Center,
+        )
+
+
+        Column(modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+            .wrapContentSize(Alignment.Center),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+
+
+
+            Text(text = "Iniciar sesión", fontSize = 25.sp, color = primaryColor)
+            Spacer(modifier = Modifier.height(30.dp))
+
+            OutlinedTextField(
+                value = emailInputValue,
+                onValueChange = {emailInputValue =it},
+                colors = textFieldColors,
+                label = { Text("Correo electrónico") }
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            OutlinedTextField(
+                value = passwordInputValue,
+                onValueChange = {passwordInputValue = it},
+                label = { Text("Contraseña") },
+                colors = textFieldColors,
+                keyboardOptions = KeyboardOptions.Default.copy(
+                    keyboardType = KeyboardType.Password
+                ),
+                visualTransformation = PasswordVisualTransformation(),
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            Button(onClick = { logIn(emailInputValue, passwordInputValue, context)  },
+                modifier = Modifier.align(CenterHorizontally),
+                colors = ButtonDefaults.buttonColors(primaryColor)
+            ) {
+                Text(text = "Iniciar sesión")
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            Row() {
+                Text(text = "¿Aún no estás registrado?")
+                Spacer(modifier = Modifier.width(5.dp))
+
+                ClickableText(
+                    text = AnnotatedString("Crea una cuenta"),
+                    style = textStyle,
+                    onClick = {
+                        openAccountRegister(context)
+                    })
+            }
+        }
+    }
+
+    @Preview(showBackground = true)
+    @Composable
+    fun GreetingPreview() {
+        FindMySpotTheme {
             LoginComponent()
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun LoginComponent() {
-    val primaryColor = Color(0xFF228B22) // Puedes definir el color aquí o usar uno de los colores personalizados definidos anteriormente
-    var emailInputValue by remember { mutableStateOf("") }
-    var passwordInputValue by remember { mutableStateOf("") }
-    val context = LocalContext.current
-
-    val textStyle = TextStyle(
-        color = primaryColor,
-        fontSize = 15.sp,
-        fontWeight = FontWeight.Bold
-    )
-
-    val textFieldColors = TextFieldDefaults.outlinedTextFieldColors(
-        focusedBorderColor = primaryColor,
-        unfocusedBorderColor = Color.Gray,
-        focusedLabelColor = primaryColor
-    )
-
-    Text(text = "FindMySpot", fontSize = 40.sp, modifier =
-    Modifier.fillMaxWidth()
-        .padding(20.dp)
-        .wrapContentHeight(align = Alignment.Top),
-        textAlign = TextAlign.Center,
-    )
-
-
-    Column(modifier = Modifier
-        .fillMaxSize()
-        .padding(16.dp)
-        .wrapContentSize(Alignment.Center),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
 
 
 
-        Text(text = "Iniciar sesión", fontSize = 25.sp, color = primaryColor)
-        Spacer(modifier = Modifier.height(30.dp))
-
-        OutlinedTextField(
-            value = emailInputValue,
-            onValueChange = {emailInputValue =it},
-            colors = textFieldColors,
-            label = { Text("Correo electrónico") }
-        )
-        Spacer(modifier = Modifier.height(10.dp))
-        OutlinedTextField(
-            value = passwordInputValue,
-            onValueChange = {passwordInputValue = it},
-            label = { Text("Contraseña") },
-            colors = textFieldColors,
-            keyboardOptions = KeyboardOptions.Default.copy(
-                keyboardType = KeyboardType.Password
-            ),
-            visualTransformation = PasswordVisualTransformation(),
-        )
-        Spacer(modifier = Modifier.height(10.dp))
-        Button(onClick = { logIn(emailInputValue, passwordInputValue, context)  },
-            modifier = Modifier.align(CenterHorizontally),
-            colors = ButtonDefaults.buttonColors(primaryColor)
-            ) {
-            Text(text = "Iniciar sesión")
-        }
-        Spacer(modifier = Modifier.height(10.dp))
-        Row() {
-            Text(text = "¿Aún no estás registrado?")
-            Spacer(modifier = Modifier.width(5.dp))
-
-            ClickableText(
-                text = AnnotatedString("Crea una cuenta"),
-                style = textStyle,
-                onClick = {
-                    openAccountRegister(context)
-                })
-        }
-        }
-    }
-
-private fun logIn(email:String, password:String, context: Context) {
-    println("Estoy iniciando sesion con el email: $email y el password: $password")
-    val intent = Intent(context, Home::class.java)
-    context.startActivity(intent)
-
-}
-
-private fun openAccountRegister(context:Context) {
-    val intent = Intent(context, Register::class.java)
-    context.startActivity(intent)
-
-}
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    FindMySpotTheme {
-        LoginComponent()
-    }
-}

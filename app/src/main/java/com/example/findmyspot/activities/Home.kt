@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -49,6 +50,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.example.findmyspot.ui.theme.FindMySpotTheme
 
 var primaryColor = Color(0xFF228B22)
 
@@ -56,171 +58,178 @@ class Home : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent{ HomeComponent(Data.conversationSample) }
+        setContent{
+            FindMySpotTheme() {
+                HomeComponent(Data.conversationSample)
+            }
+             }
     }
-}
 
-@Composable
-fun HomeComponent(messages:List<Message>){
-    val secondaryColor = Color(0xFF68A767)
-    val context = LocalContext.current
+    @Composable
+    fun HomeComponent(messages:List<Message>){
+        val secondaryColor = Color(0xFF68A767)
+        val context = LocalContext.current
 
-Column( modifier = Modifier.fillMaxSize()) {
-    Text(text = "FindMySpot", fontSize = 40.sp, modifier =
-    Modifier
-        .fillMaxWidth()
-        .padding(20.dp)
-        .wrapContentHeight(align = Alignment.Top),
-        textAlign = TextAlign.Center,
-    )
-
-    Column(modifier = Modifier
-        .padding(16.dp)
-    ) {
-
-
-        Text(text = "Bienvenido Paco", fontSize = 20.sp, modifier =
-        Modifier
-            .fillMaxWidth()
-            .wrapContentHeight(align = Alignment.Top),
-            textAlign = TextAlign.Left,
-        )
-        Text(text = "¿Qué quieres hacer el día de hoy?", fontSize = 15.sp, modifier =
-        Modifier
-            .fillMaxWidth()
-            .wrapContentHeight(align = Alignment.Top),
-            textAlign = TextAlign.Left,
-        )
-
-        Spacer(modifier = Modifier.width(50.dp))
-        Button(onClick = { entrarAlEstacionamiento(context) },
-            colors = ButtonDefaults.buttonColors(primaryColor),
-            modifier = Modifier.align(CenterHorizontally),
-        ) {
-            Text(text = "Entrar al estacionamiento", fontSize = 15.sp, modifier =
+        Column( modifier = Modifier.fillMaxSize()) {
+            Text(text = "FindMySpot", fontSize = 40.sp, modifier =
             Modifier
+                .fillMaxWidth()
+                .padding(20.dp)
                 .wrapContentHeight(align = Alignment.Top),
                 textAlign = TextAlign.Center,
-                )
-        }
-        Row(modifier = Modifier.align(CenterHorizontally),) {
-            Button(onClick = { /*TODO*/ },
-                colors = ButtonDefaults.buttonColors(secondaryColor),
-                modifier = Modifier.padding(10.dp)
-
-            ) {
-                Text(text = "Reservar un lugar", fontSize = 10.sp, modifier =
-                Modifier
-                    .wrapContentHeight(align = Alignment.Top),
-                    textAlign = TextAlign.Center,
-                )
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Button(onClick = { /*TODO*/ },
-                colors = ButtonDefaults.buttonColors(secondaryColor),
-                modifier = Modifier.padding(10.dp)
-            ) {
-                Text(text = "Ver metodos de pago", fontSize = 10.sp, modifier =
-                Modifier
-                    .wrapContentHeight(align = Alignment.Top),
-                    textAlign = TextAlign.Center,
-                )
-            }
-        }
-
-        Text(text = "Tus visitas mas recientes", fontSize = 20.sp, textAlign = TextAlign.Center,
-        )
-
-        LazyColumn {
-            items(messages) { message ->
-                Card()
-            }
-        }
-    }
-
-    }
-
-}
-
-fun entrarAlEstacionamiento(context: Context) {
-    val intent = Intent(context, NewQR::class.java)
-    context.startActivity(intent)
-}
-
-@Composable
-fun Card(){
-    val bgColor = Color(0xFFD9D9D9)
-    var isDialogOpen by remember { mutableStateOf(false) }
-
-    val textStyle = TextStyle(
-        color = primaryColor,
-        fontSize = 15.sp,
-        fontWeight = FontWeight.Bold
-    )
-    Box(
-        modifier = Modifier
-            .padding(top = 16.dp)
-            .background(
-                color = bgColor,
-                shape = RoundedCornerShape(10.dp)
             )
 
-    ) {
-        
-        Column(modifier = Modifier
-            .padding(30.dp)
-            .fillMaxWidth(), ) {
-            Text(text = "Estacionamiento Altacia", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
-            Text(text = "Fecha:")
-            Text(text = "Duracion:")
-            Text(text = "Total:")
-            ClickableText(
-                text = AnnotatedString("Ver detalle"),
-                modifier = Modifier.align(End),
-                style = textStyle,
-                onClick = {
-                    isDialogOpen = true
-                })
-            if (isDialogOpen) {
-                ModalDetail(onDismiss = { isDialogOpen = false })
-            }
-        }
-
-    }
-
-}
-
-
-@Composable
-private fun ModalDetail(onDismiss: () -> Unit) {
-
-    Dialog(
-            onDismissRequest = { onDismiss() },
-            properties = DialogProperties(dismissOnClickOutside = true),
+            Column(modifier = Modifier
+                .padding(16.dp)
             ) {
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = Color.White
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Column(
-                    modifier = Modifier
-                        .padding(16.dp)
+
+
+                Text(text = "Bienvenido Paco", fontSize = 20.sp, modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight(align = Alignment.Top),
+                    textAlign = TextAlign.Left,
+                )
+                Text(text = "¿Qué quieres hacer el día de hoy?", fontSize = 15.sp, modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight(align = Alignment.Top),
+                    textAlign = TextAlign.Left,
+                )
+
+                Spacer(modifier = Modifier.width(50.dp))
+                Button(onClick = { entrarAlEstacionamiento(context) },
+                    colors = ButtonDefaults.buttonColors(primaryColor),
+                    modifier = Modifier.align(CenterHorizontally),
                 ) {
-                    Text("Este es el contenido del modal.")
-                    Button(
-                        onClick = { onDismiss() },
-                        colors = ButtonDefaults.buttonColors(primaryColor),
-                        modifier = Modifier.padding(top = 16.dp)
-                                .align(End),
+                    Text(text = "Entrar al estacionamiento", fontSize = 15.sp, modifier =
+                    Modifier
+                        .wrapContentHeight(align = Alignment.Top),
+                        textAlign = TextAlign.Center,
+                    )
+                }
+                Row(modifier = Modifier.align(CenterHorizontally),) {
+                    Button(onClick = { /*TODO*/ },
+                        colors = ButtonDefaults.buttonColors(secondaryColor),
+                        modifier = Modifier.padding(10.dp)
+
                     ) {
-                        Text("Cerrar")
+                        Text(text = "Reservar un lugar", fontSize = 10.sp, modifier =
+                        Modifier
+                            .wrapContentHeight(align = Alignment.Top),
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Button(onClick = { /*TODO*/ },
+                        colors = ButtonDefaults.buttonColors(secondaryColor),
+                        modifier = Modifier.padding(10.dp)
+                    ) {
+                        Text(text = "Ver metodos de pago", fontSize = 10.sp, modifier =
+                        Modifier
+                            .wrapContentHeight(align = Alignment.Top),
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                }
+
+                Text(text = "Tus visitas mas recientes", fontSize = 20.sp, textAlign = TextAlign.Center,
+                )
+
+                LazyColumn {
+                    items(messages) { message ->
+                        Card()
                     }
                 }
             }
-        }
 
         }
+
+    }
+
+    fun entrarAlEstacionamiento(context: Context) {
+        val intent = Intent(context, NewQR::class.java)
+        context.startActivity(intent)
+    }
+
+    @Composable
+    fun Card(){
+        val bgColor = Color(0xFFD9D9D9)
+        var isDialogOpen by remember { mutableStateOf(false) }
+
+        val textStyle = TextStyle(
+            color = primaryColor,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold
+        )
+        Box(
+            modifier = Modifier
+                .padding(top = 16.dp)
+                .background(
+                    color = bgColor,
+                    shape = RoundedCornerShape(10.dp)
+                )
+
+        ) {
+
+            Column(modifier = Modifier
+                .padding(30.dp)
+                .fillMaxWidth(), ) {
+                Text(text = "Estacionamiento Altacia", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+                Text(text = "Fecha:")
+                Text(text = "Duracion:")
+                Text(text = "Total:")
+                ClickableText(
+                    text = AnnotatedString("Ver detalle"),
+                    modifier = Modifier.align(End),
+                    style = textStyle,
+                    onClick = {
+                        isDialogOpen = true
+                    })
+                if (isDialogOpen) {
+                    ModalDetail(onDismiss = { isDialogOpen = false })
+                }
+            }
+
+        }
+
+    }
+
+
+    @Composable
+    private fun ModalDetail(onDismiss: () -> Unit) {
+
+        Dialog(
+            onDismissRequest = { onDismiss() },
+            properties = DialogProperties(dismissOnClickOutside = true),
+        ) {
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = Color.White
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Column(
+                        modifier = Modifier
+                            .padding(16.dp)
+                    ) {
+                        Text("Este es el contenido del modal.")
+                        Button(
+                            onClick = { onDismiss() },
+                            colors = ButtonDefaults.buttonColors(primaryColor),
+                            modifier = Modifier
+                                .padding(top = 16.dp)
+                                .align(End),
+                        ) {
+                            Text("Cerrar")
+                        }
+                    }
+                }
+            }
+
+        }
+    }
+
 }
+

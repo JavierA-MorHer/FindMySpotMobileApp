@@ -50,7 +50,9 @@ class Register : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            RegisterComponent()
+            FindMySpotTheme() {
+                RegisterComponent()
+            }
         }
     }
 
