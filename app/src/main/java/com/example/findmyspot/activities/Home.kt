@@ -53,22 +53,23 @@ import androidx.compose.ui.window.DialogProperties
 import com.example.findmyspot.ui.theme.FindMySpotTheme
 
 var primaryColor = Color(0xFF228B22)
+val secondaryColor = Color(0xFF68A767)
+val bgColor = Color(0xFFD9D9D9)
 
 class Home : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent{
-            FindMySpotTheme() {
-                HomeComponent(Data.conversationSample)
-            }
+            HomeComponent(Data.conversationSample)
              }
     }
 
     @Composable
     fun HomeComponent(messages:List<Message>){
-        val secondaryColor = Color(0xFF68A767)
         val context = LocalContext.current
+        var isVisible by remember { mutableStateOf(true) }
+        isVisible = true
 
         Column( modifier = Modifier.fillMaxSize()) {
             Text(text = "FindMySpot", fontSize = 40.sp, modifier =
@@ -83,55 +84,16 @@ class Home : ComponentActivity() {
                 .padding(16.dp)
             ) {
 
-
                 Text(text = "Bienvenido Paco", fontSize = 20.sp, modifier =
                 Modifier
                     .fillMaxWidth()
                     .wrapContentHeight(align = Alignment.Top),
                     textAlign = TextAlign.Left,
                 )
-                Text(text = "¿Qué quieres hacer el día de hoy?", fontSize = 15.sp, modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .wrapContentHeight(align = Alignment.Top),
-                    textAlign = TextAlign.Left,
-                )
-
-                Spacer(modifier = Modifier.width(50.dp))
-                Button(onClick = { entrarAlEstacionamiento(context) },
-                    colors = ButtonDefaults.buttonColors(primaryColor),
-                    modifier = Modifier.align(CenterHorizontally),
-                ) {
-                    Text(text = "Entrar al estacionamiento", fontSize = 15.sp, modifier =
-                    Modifier
-                        .wrapContentHeight(align = Alignment.Top),
-                        textAlign = TextAlign.Center,
-                    )
-                }
-                Row(modifier = Modifier.align(CenterHorizontally),) {
-                    Button(onClick = { /*TODO*/ },
-                        colors = ButtonDefaults.buttonColors(secondaryColor),
-                        modifier = Modifier.padding(10.dp)
-
-                    ) {
-                        Text(text = "Reservar un lugar", fontSize = 10.sp, modifier =
-                        Modifier
-                            .wrapContentHeight(align = Alignment.Top),
-                            textAlign = TextAlign.Center,
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    Button(onClick = { /*TODO*/ },
-                        colors = ButtonDefaults.buttonColors(secondaryColor),
-                        modifier = Modifier.padding(10.dp)
-                    ) {
-                        Text(text = "Ver metodos de pago", fontSize = 10.sp, modifier =
-                        Modifier
-                            .wrapContentHeight(align = Alignment.Top),
-                            textAlign = TextAlign.Center,
-                        )
+                when(isVisible){
+                     false -> BotonArea(context)
+                    else -> {
+                        EstanciaEnCurso()
                     }
                 }
 
@@ -148,15 +110,58 @@ class Home : ComponentActivity() {
         }
 
     }
+@Preview(showBackground = true)
+    @Composable
+    fun EstanciaEnCurso() {
+        Box(
+            modifier = Modifier
+                .padding(all = 16.dp)
+                .background(
+                    color = bgColor,
+                    shape = RoundedCornerShape(10.dp)
+                )
+        ){
+            Column(
+                modifier = Modifier
+                    .padding(30.dp)
+            ) {
+                Text(text = "Detalle de su estancia",
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(40.dp))
+                Text(text = "Estacionamiento: ",fontSize = 15.sp)
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(text = "Hora de entrada: ",fontSize = 15.sp)
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(text = "Tiempo acumulado: ",fontSize = 15.sp)
+                Spacer(modifier = Modifier.height(25.dp))
+                Text(text = "Total al momento: ",modifier = Modifier.fillMaxWidth(),textAlign = TextAlign.Center,fontSize = 20.sp, fontWeight = FontWeight.Bold,)
+                Spacer(modifier = Modifier.height(20.dp))
+                Button(onClick = {  },
+                    colors = ButtonDefaults.buttonColors(primaryColor),
+                    modifier = Modifier.align(CenterHorizontally)
+                                        .fillMaxWidth(),
+                ) {
+                    Text(text = "Ver QR", fontSize = 18.sp, modifier =
+                    Modifier
+                        .wrapContentHeight(align = Alignment.Top),
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
+        }
+    }
 
-    fun entrarAlEstacionamiento(context: Context) {
+    private fun entrarAlEstacionamiento(context: Context) {
         val intent = Intent(context, NewQR::class.java)
         context.startActivity(intent)
     }
 
     @Composable
     fun Card(){
-        val bgColor = Color(0xFFD9D9D9)
         var isDialogOpen by remember { mutableStateOf(false) }
 
         val textStyle = TextStyle(
@@ -197,6 +202,57 @@ class Home : ComponentActivity() {
 
     }
 
+    @Composable
+    fun BotonArea(context:Context){
+        Box(){
+            Column() {
+                Text(text = "¿Qué quieres hacer el día de hoy?", fontSize = 15.sp, modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight(align = Alignment.Top),
+                    textAlign = TextAlign.Left,
+                )
+                Spacer(modifier = Modifier.height(25.dp))
+                Button(onClick = { entrarAlEstacionamiento(context) },
+                    colors = ButtonDefaults.buttonColors(primaryColor),
+                    modifier = Modifier.align(CenterHorizontally).height(55.dp),
+                ) {
+                    Text(text = "Entrar al estacionamiento", fontSize = 18.sp, modifier =
+                    Modifier
+                        .wrapContentHeight(align = Alignment.Top),
+                        textAlign = TextAlign.Center,
+                    )
+                }
+                Row(modifier = Modifier.align(CenterHorizontally),) {
+                    Button(onClick = { /*TODO*/ },
+                        colors = ButtonDefaults.buttonColors(secondaryColor),
+                        modifier = Modifier.padding(10.dp).height(55.dp)
+
+                    ) {
+                        Text(text = "Reservar un lugar", fontSize = 15.sp, modifier =
+                        Modifier
+                            .wrapContentHeight(align = Alignment.Top),
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Button(onClick = { /*TODO*/ },
+                        colors = ButtonDefaults.buttonColors(secondaryColor),
+                        modifier = Modifier.padding(10.dp)
+                    ) {
+                        Text(text = "Ver metodos de pago", fontSize = 15.sp, modifier =
+                        Modifier
+                            .wrapContentHeight(align = Alignment.Top),
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                }
+            }
+
+        }
+    }
 
     @Composable
     private fun ModalDetail(onDismiss: () -> Unit) {
@@ -228,6 +284,14 @@ class Home : ComponentActivity() {
                 }
             }
 
+        }
+    }
+
+//    @Preview(showBackground = true)
+    @Composable
+    fun PreviewHome(){
+        FindMySpotTheme() {
+            HomeComponent(Data.conversationSample)
         }
     }
 

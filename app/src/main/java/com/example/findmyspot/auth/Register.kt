@@ -50,9 +50,7 @@ class Register : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            FindMySpotTheme() {
-                RegisterComponent()
-            }
+            RegisterComponent()
         }
     }
 
@@ -61,7 +59,7 @@ class Register : ComponentActivity() {
     fun RegisterComponent(){
         val context = LocalContext.current
 
-        val primaryColor = Color(0xFF228B22) // Puedes definir el color aquí o usar uno de los colores personalizados definidos anteriormente
+        val primaryColor = Color(0xFF228B22)
         var firstNameInputValue by remember { mutableStateOf("") }
         var lastNameInputValue by remember { mutableStateOf("") }
         var emailInputValue by remember { mutableStateOf("") }
