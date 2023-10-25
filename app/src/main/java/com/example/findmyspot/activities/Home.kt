@@ -64,7 +64,7 @@ class Home : ComponentActivity() {
     fun HomeComponent(messages:List<Message>){
         val context = LocalContext.current
         var isVisible by remember { mutableStateOf(true) }
-        isVisible = true
+        isVisible = false
 
         Column( modifier = Modifier.fillMaxSize()) {
             Text(text = "FindMySpot", fontSize = 40.sp, modifier =
@@ -105,7 +105,6 @@ class Home : ComponentActivity() {
         }
 
     }
-@Preview(showBackground = true)
     @Composable
     fun EstanciaEnCurso() {
         Box(
@@ -154,7 +153,10 @@ class Home : ComponentActivity() {
         val intent = Intent(context, NewQR::class.java)
         context.startActivity(intent)
     }
-
+    private fun reservarLugar(context: Context) {
+        val intent = Intent(context, ReservarLugar::class.java)
+        context.startActivity(intent)
+    }
     @Composable
     fun Card(){
         var isDialogOpen by remember { mutableStateOf(false) }
@@ -219,7 +221,7 @@ class Home : ComponentActivity() {
                     )
                 }
                 Row(modifier = Modifier.align(CenterHorizontally)) {
-                    Button(onClick = { /*TODO*/ },
+                    Button(onClick = { reservarLugar(context) },
                         colors = ButtonDefaults.buttonColors(secondaryColor),
                         modifier = Modifier.padding(10.dp).height(55.dp)
 

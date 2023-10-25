@@ -60,11 +60,13 @@ class Register : ComponentActivity() {
         val context = LocalContext.current
 
         val primaryColor = Color(0xFF228B22)
-        var firstNameInputValue by remember { mutableStateOf("") }
-        var lastNameInputValue by remember { mutableStateOf("") }
+        var nombre by remember { mutableStateOf("") }
+        var apellidoPaterno by remember { mutableStateOf("") }
+        var apellidoMaterno by remember { mutableStateOf("") }
         var emailInputValue by remember { mutableStateOf("") }
-        var passwordInputValue by remember { mutableStateOf("") }
-        var passwordConfirmationInputValue by remember { mutableStateOf("") }
+        var telefono by remember { mutableStateOf("") }
+        var password by remember { mutableStateOf("") }
+        var passwordConfirmation by remember { mutableStateOf("") }
         val focusRequester = remember { FocusRequester() }
 
 
@@ -94,8 +96,8 @@ class Register : ComponentActivity() {
             Spacer(modifier = Modifier.height(30.dp))
 
             OutlinedTextField(
-                value = firstNameInputValue,
-                onValueChange = {firstNameInputValue =it},
+                value = nombre,
+                onValueChange = {nombre =it},
                 colors = textFieldColors,
                 label = { Text("Nombre") },
                 keyboardOptions = KeyboardOptions.Default.copy(
@@ -106,10 +108,22 @@ class Register : ComponentActivity() {
             Spacer(modifier = Modifier.height(10.dp))
 
             OutlinedTextField(
-                value = lastNameInputValue,
-                onValueChange = {lastNameInputValue =it},
+                value = apellidoPaterno,
+                onValueChange = {apellidoPaterno =it},
                 colors = textFieldColors,
-                label = { Text("Apellido") },
+                label = { Text("Apellido paterno") },
+                keyboardOptions = KeyboardOptions.Default.copy(
+                    keyboardType = KeyboardType.Text,
+                ),
+                singleLine = true,
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+
+            OutlinedTextField(
+                value = apellidoMaterno,
+                onValueChange = {apellidoMaterno =it},
+                colors = textFieldColors,
+                label = { Text("Apellido materno") },
                 keyboardOptions = KeyboardOptions.Default.copy(
                     keyboardType = KeyboardType.Text,
                 ),
@@ -129,9 +143,22 @@ class Register : ComponentActivity() {
                 singleLine = true,
             )
             Spacer(modifier = Modifier.height(10.dp))
+
             OutlinedTextField(
-                value = passwordInputValue,
-                onValueChange = {passwordInputValue = it},
+                value = telefono,
+                onValueChange = {telefono =it},
+                colors = textFieldColors,
+                label = { Text("telefono") },
+                keyboardOptions = KeyboardOptions.Default.copy(
+                    keyboardType = KeyboardType.Number,
+                ),
+                singleLine = true,
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+
+            OutlinedTextField(
+                value = password,
+                onValueChange = {password = it},
                 label = { Text("Contraseña") },
                 colors = textFieldColors,
                 keyboardOptions = KeyboardOptions.Default.copy(
@@ -146,8 +173,8 @@ class Register : ComponentActivity() {
             Spacer(modifier = Modifier.height(10.dp))
 
             OutlinedTextField(
-                value = passwordConfirmationInputValue,
-                onValueChange = {passwordConfirmationInputValue =it},
+                value = passwordConfirmation,
+                onValueChange = {passwordConfirmation =it},
                 colors = textFieldColors,
                 label = { Text("Confirma la contraseña") },
                 keyboardOptions = KeyboardOptions.Default.copy(
@@ -157,7 +184,7 @@ class Register : ComponentActivity() {
             )
             Spacer(modifier = Modifier.height(10.dp))
             Button(onClick = {
-                val user = User(firstNameInputValue,lastNameInputValue,emailInputValue,passwordInputValue)
+                val user = User(nombre,apellidoPaterno,apellidoMaterno,emailInputValue,telefono,password)
                 createAccount(user)
                              },
                 modifier = Modifier.align(Alignment.CenterHorizontally),

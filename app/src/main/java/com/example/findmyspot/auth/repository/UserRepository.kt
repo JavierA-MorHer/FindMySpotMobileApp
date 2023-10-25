@@ -15,17 +15,7 @@ class UserRepository {
             personList.remove(person)
         }
 
-        // Actualizar una persona
-        fun updatePerson(updatedPerson: User) {
-            val existingPerson = personList.find { it.id == updatedPerson.id }
-            existingPerson?.let {
-                it.firstName = updatedPerson.firstName
-                it.lastName = updatedPerson.lastName
-                it.email = updatedPerson.email
-                it.password = updatedPerson.password
 
-            }
-        }
 
         // Obtener todas las personas
         fun getAllPeople(): List<User> {

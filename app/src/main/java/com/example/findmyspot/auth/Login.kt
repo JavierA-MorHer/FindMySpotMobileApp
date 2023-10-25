@@ -3,7 +3,6 @@ package com.example.findmyspot.auth
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
@@ -32,7 +31,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Alignment.Companion.CenterHorizontally
-import androidx.compose.ui.Alignment.Companion.TopCenter
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -45,9 +43,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat.startActivity
 import com.example.findmyspot.activities.Home
+import com.example.findmyspot.auth.model.ApiAuthService
+import com.example.findmyspot.auth.model.User
 import com.example.findmyspot.ui.theme.FindMySpotTheme
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
 
 class Login : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -57,12 +61,66 @@ class Login : ComponentActivity() {
         }
     }
 
-    private fun logIn(email:String, password:String, context: Context) {
-        println("Estoy iniciando sesion con el email: $email y el password: $password")
-        val intent = Intent(context, Home::class.java)
-        context.startActivity(intent)
-        finish()
+    private fun getRetrofit(): Retrofit {
+      return Retrofit.Builder()
+            .baseUrl("https://findmyspotservices.up.railway.app/")
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
     }
+
+    private fun logIn(email:String, password:String, context: Context) {
+        val requestBody = User(email = email, password = password)
+
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val call = getRetrofit().create(ApiAuthService::class.java).login(requestBody)
+                if(call.isSuccessful){
+                    val usuario = call.body()
+
+                    if (usuario != null) {
+                        setSharedPreferences(usuario)
+                        val intent = Intent(context, Home::class.java)
+                        context.startActivity(intent)
+                        finish()
+                    }
+                }else{
+                    // La solicitud no fue exitosa. Puedes manejar el error aquí.
+                    val errorBody = call.errorBody()
+                    if (errorBody != null) {
+                        val errorMessage = errorBody.string()
+                        println("Error en la solicitud: $errorMessage")
+                    } else {
+                        println("Error en la solicitud, pero no se pudo obtener el mensaje de error.")
+                    }
+                }
+            }catch (e:Exception){
+                println("Error: ${e.message}")
+            }
+        }
+    }
+
+    private fun setSharedPreferences(usuario: User) {
+        val sharedPreferences = getSharedPreferences("FindMySpot", Context.MODE_PRIVATE)
+        val editor = sharedPreferences.edit()
+
+        val nombre = usuario.nombre
+        val apellidoPaterno = usuario.apellidoPaterno
+        val apellidoMaterno = usuario.apellidoMaterno
+        val email = usuario.email
+        val telefono = usuario.telefono
+        val password = usuario.password
+        val id = usuario.id_Usuario
+
+        editor.putString("nombre", nombre)
+        editor.putString("apellidoPaterno", apellidoPaterno)
+        editor.putString("apellidoMaterno", apellidoMaterno)
+        editor.putString("telefono", telefono)
+        editor.putString("email", email)
+        editor.putString("password", password)
+        editor.putString("id",id)
+        editor.apply()
+    }
+
     private fun openAccountRegister(context:Context) {
         val intent = Intent(context, Register::class.java)
         context.startActivity(intent)
