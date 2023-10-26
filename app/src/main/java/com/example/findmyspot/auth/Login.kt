@@ -18,8 +18,10 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -43,6 +45,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogProperties
 import com.example.findmyspot.activities.Home
 import com.example.findmyspot.auth.model.ApiAuthService
 import com.example.findmyspot.auth.model.User
@@ -56,9 +59,21 @@ import retrofit2.converter.gson.GsonConverterFactory
 class Login : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent {
-            LoginComponent()
+
+        val sharedPreferences = getSharedPreferences("FindMySpot", Context.MODE_PRIVATE)
+        val isLoggedIn = sharedPreferences.getBoolean("isLoggedIn", false)
+
+        if (isLoggedIn) {
+            val intent = Intent(this, Home::class.java)
+            startActivity(intent)
+            finish()
+        } else {
+            setContent {
+                LoginComponent()
+            }
         }
+
+
     }
 
     private fun getRetrofit(): Retrofit {
@@ -68,56 +83,18 @@ class Login : ComponentActivity() {
             .build()
     }
 
-    private fun logIn(email:String, password:String, context: Context) {
-        val requestBody = User(email = email, password = password)
-
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val call = getRetrofit().create(ApiAuthService::class.java).login(requestBody)
-                if(call.isSuccessful){
-                    val usuario = call.body()
-
-                    if (usuario != null) {
-                        setSharedPreferences(usuario)
-                        val intent = Intent(context, Home::class.java)
-                        context.startActivity(intent)
-                        finish()
-                    }
-                }else{
-                    // La solicitud no fue exitosa. Puedes manejar el error aquí.
-                    val errorBody = call.errorBody()
-                    if (errorBody != null) {
-                        val errorMessage = errorBody.string()
-                        println("Error en la solicitud: $errorMessage")
-                    } else {
-                        println("Error en la solicitud, pero no se pudo obtener el mensaje de error.")
-                    }
-                }
-            }catch (e:Exception){
-                println("Error: ${e.message}")
-            }
-        }
-    }
-
     private fun setSharedPreferences(usuario: User) {
         val sharedPreferences = getSharedPreferences("FindMySpot", Context.MODE_PRIVATE)
         val editor = sharedPreferences.edit()
 
-        val nombre = usuario.nombre
-        val apellidoPaterno = usuario.apellidoPaterno
-        val apellidoMaterno = usuario.apellidoMaterno
-        val email = usuario.email
-        val telefono = usuario.telefono
-        val password = usuario.password
-        val id = usuario.id_Usuario
-
-        editor.putString("nombre", nombre)
-        editor.putString("apellidoPaterno", apellidoPaterno)
-        editor.putString("apellidoMaterno", apellidoMaterno)
-        editor.putString("telefono", telefono)
-        editor.putString("email", email)
-        editor.putString("password", password)
-        editor.putString("id",id)
+        editor.putString("nombre", usuario.nombre)
+        editor.putString("apellidoPaterno", usuario.apellidoPaterno)
+        editor.putString("apellidoMaterno", usuario.apellidoMaterno)
+        editor.putString("telefono", usuario.telefono)
+        editor.putString("email", usuario.email)
+        editor.putString("password", usuario.password)
+        editor.putString("id",usuario.id_Usuario)
+        editor.putBoolean("isLoggedIn", true)
         editor.apply()
     }
 
@@ -133,7 +110,39 @@ class Login : ComponentActivity() {
         var emailInputValue by remember { mutableStateOf("") }
         var passwordInputValue by remember { mutableStateOf("") }
         val context = LocalContext.current
+        var showLoadingDialog by remember { mutableStateOf(false) }
+        var showErrorDialog by remember { mutableStateOf(false) }
+        var msgError by remember { mutableStateOf("") }
 
+
+        // Muestra el diálogo de carga cuando isLoading es verdadero
+        if (showLoadingDialog) {
+            AlertDialog(
+                onDismissRequest = { /* No hacer nada al hacer clic fuera del diálogo */ },
+                properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
+                confirmButton = {},
+                title = { Text("Cargando...") },
+                text = {
+                    CircularProgressIndicator() // Spinner de carga
+                }
+            )
+        }
+
+        if (showErrorDialog) {
+            AlertDialog(
+                onDismissRequest = { showErrorDialog = false },
+                title = { Text(msgError) },
+                text = {  },
+                confirmButton = {},
+                dismissButton = {
+                    Button(
+                        onClick = { showErrorDialog = false }
+                    ) {
+                        Text("Cerrar")
+                    }
+                }
+            )
+        }
         val textStyle = TextStyle(
             color = primaryColor,
             fontSize = 15.sp,
@@ -186,7 +195,47 @@ class Login : ComponentActivity() {
                 visualTransformation = PasswordVisualTransformation(),
             )
             Spacer(modifier = Modifier.height(10.dp))
-            Button(onClick = { logIn(emailInputValue, passwordInputValue, context)  },
+            Button(onClick = {
+                if (emailInputValue.isNotEmpty() && passwordInputValue.isNotEmpty()){
+
+                    showLoadingDialog = true
+
+                    val requestBody = User(email = emailInputValue, password = passwordInputValue)
+
+                    CoroutineScope(Dispatchers.IO).launch {
+                        try {
+                            val call = getRetrofit().create(ApiAuthService::class.java).login(requestBody)
+                            if(call.code()== 200){
+                                val usuario = call.body()
+
+                                if (usuario != null) {
+                                    setSharedPreferences(usuario)
+                                    val intent = Intent(context, Home::class.java)
+                                    context.startActivity(intent)
+                                }
+
+
+                            } else{
+                                msgError = "El usuario y/o contraseña son incorrectos"
+                                showLoadingDialog = false
+                                showErrorDialog = true
+                                // La solicitud no fue exitosa. Puedes manejar el error aquí.
+                                val errorBody = call.errorBody()
+                                if (errorBody != null) {
+                                    val errorMessage = errorBody.string()
+                                    println("Error en la solicitud: $errorMessage")
+                                } else {
+                                    println("Error en la solicitud, pero no se pudo obtener el mensaje de error.")
+                                }
+                            }
+                        }catch (e:Exception){
+                            println("Error: ${e.message}")
+                        }
+                    }
+                }else{
+                    msgError = "Por favor, ingrese su email y contraseña"
+                    showErrorDialog = true
+                }},
                 modifier = Modifier.align(CenterHorizontally),
                 colors = ButtonDefaults.buttonColors(primaryColor)
             ) {

@@ -45,6 +45,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.example.findmyspot.auth.Login
 import com.example.findmyspot.ui.theme.FindMySpotTheme
 
 var primaryColor = Color(0xFF228B22)
@@ -60,8 +61,24 @@ class Home : ComponentActivity() {
              }
     }
 
+    fun signOut(){
+        val sharedPreferences = getSharedPreferences("FindMySpot", Context.MODE_PRIVATE)
+        val editor = sharedPreferences.edit()
+        editor.remove("isLoggedIn")
+        editor.apply()
+
+        val intent = Intent(this, Login::class.java)
+        startActivity(intent)
+        finish()
+    }
+
     @Composable
     fun HomeComponent(messages:List<Message>){
+
+        val sharedPreferences = getSharedPreferences("FindMySpot", Context.MODE_PRIVATE)
+        val nombre = sharedPreferences.getString("nombre", null)
+        val email = sharedPreferences.getString("email", null)
+
         val context = LocalContext.current
         var isVisible by remember { mutableStateOf(true) }
         isVisible = false
@@ -79,7 +96,7 @@ class Home : ComponentActivity() {
                 .padding(16.dp)
             ) {
 
-                Text(text = "Bienvenido Paco", fontSize = 20.sp, modifier =
+                Text(text = "Bienvenido $nombre", fontSize = 20.sp, modifier =
                 Modifier
                     .fillMaxWidth()
                     .wrapContentHeight(align = Alignment.Top),
@@ -235,7 +252,7 @@ class Home : ComponentActivity() {
 
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    Button(onClick = { /*TODO*/ },
+                    Button(onClick = { signOut() },
                         colors = ButtonDefaults.buttonColors(secondaryColor),
                         modifier = Modifier.padding(10.dp)
                     ) {
