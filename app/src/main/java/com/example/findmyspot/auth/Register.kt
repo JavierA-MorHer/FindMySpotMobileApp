@@ -18,8 +18,10 @@ import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -43,15 +45,49 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogProperties
+import com.example.findmyspot.activities.Home
+import com.example.findmyspot.auth.model.ApiAuthService
+import com.example.findmyspot.auth.model.NewUser
 import com.example.findmyspot.auth.model.User
+import com.example.findmyspot.auth.model.isValid
 import com.example.findmyspot.ui.theme.FindMySpotTheme
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
 
 class Register : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            RegisterComponent()
+            FindMySpotTheme() {
+                RegisterComponent()
+            }
         }
+    }
+
+    private fun getRetrofit(): Retrofit {
+        return Retrofit.Builder()
+            .baseUrl("https://findmyspotservices.up.railway.app/")
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+    }
+
+    private fun setSharedPreferences(usuario: User) {
+        val sharedPreferences = getSharedPreferences("FindMySpot", Context.MODE_PRIVATE)
+        val editor = sharedPreferences.edit()
+
+        editor.putString("nombre", usuario.nombre)
+        editor.putString("apellidoPaterno", usuario.apellidoPaterno)
+        editor.putString("apellidoMaterno", usuario.apellidoMaterno)
+        editor.putString("telefono", usuario.telefono)
+        editor.putString("email", usuario.email)
+        editor.putString("password", usuario.password)
+        editor.putString("id",usuario.id_Usuario)
+        editor.putBoolean("isLoggedIn", true)
+        editor.apply()
     }
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -63,11 +99,42 @@ class Register : ComponentActivity() {
         var nombre by remember { mutableStateOf("") }
         var apellidoPaterno by remember { mutableStateOf("") }
         var apellidoMaterno by remember { mutableStateOf("") }
-        var emailInputValue by remember { mutableStateOf("") }
+        var email by remember { mutableStateOf("") }
         var telefono by remember { mutableStateOf("") }
         var password by remember { mutableStateOf("") }
         var passwordConfirmation by remember { mutableStateOf("") }
         val focusRequester = remember { FocusRequester() }
+        var showLoadingDialog by remember { mutableStateOf(false) }
+        var showErrorDialog by remember { mutableStateOf(false) }
+        var msgError by remember { mutableStateOf("") }
+
+        if (showLoadingDialog) {
+            AlertDialog(
+                onDismissRequest = { /* No hacer nada al hacer clic fuera del diálogo */ },
+                properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
+                confirmButton = {},
+                title = { Text("Cargando...") },
+                text = {
+                    CircularProgressIndicator() // Spinner de carga
+                }
+            )
+        }
+
+        if (showErrorDialog) {
+            AlertDialog(
+                onDismissRequest = { showErrorDialog = false },
+                title = { Text(msgError) },
+                text = {  },
+                confirmButton = {},
+                dismissButton = {
+                    Button(
+                        onClick = { showErrorDialog = false }
+                    ) {
+                        Text("Cerrar")
+                    }
+                }
+            )
+        }
 
 
         val textStyle = TextStyle(
@@ -89,11 +156,11 @@ class Register : ComponentActivity() {
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(text = "FINDMYSPOT", fontSize = 40.sp)
-            Spacer(modifier = Modifier.height(80.dp))
+            Text(text = "FindMySpot", fontSize = 40.sp)
+            Spacer(modifier = Modifier.height(20.dp))
 
             Text(text = "Crear cuenta", fontSize = 25.sp)
-            Spacer(modifier = Modifier.height(30.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             OutlinedTextField(
                 value = nombre,
@@ -132,8 +199,8 @@ class Register : ComponentActivity() {
             Spacer(modifier = Modifier.height(10.dp))
 
             OutlinedTextField(
-                value = emailInputValue,
-                onValueChange = {emailInputValue =it},
+                value = email,
+                onValueChange = {email =it},
                 colors = textFieldColors,
                 label = { Text("Correo electrónico") },
                 keyboardOptions = KeyboardOptions.Default.copy(
@@ -148,7 +215,7 @@ class Register : ComponentActivity() {
                 value = telefono,
                 onValueChange = {telefono =it},
                 colors = textFieldColors,
-                label = { Text("telefono") },
+                label = { Text("Teléfono") },
                 keyboardOptions = KeyboardOptions.Default.copy(
                     keyboardType = KeyboardType.Number,
                 ),
@@ -184,9 +251,53 @@ class Register : ComponentActivity() {
             )
             Spacer(modifier = Modifier.height(10.dp))
             Button(onClick = {
-                val user = User(nombre,apellidoPaterno,apellidoMaterno,emailInputValue,telefono,password)
-                createAccount(user)
-                             },
+                if ( password == passwordConfirmation ){
+                    showLoadingDialog = true
+                    val newUser = NewUser(nombre,apellidoPaterno,apellidoMaterno,email,telefono,password)
+                    if (newUser.isValid()){
+                        CoroutineScope(Dispatchers.IO).launch {
+                            try {
+                                val call = getRetrofit().create(ApiAuthService::class.java).createUser(newUser)
+                                if(call.code()== 200){
+                                    val usuario = call.body()
+
+                                    if (usuario != null) {
+                                        setSharedPreferences(usuario)
+                                        val intent = Intent(context, Home::class.java)
+                                        context.startActivity(intent)
+                                    }
+
+                                } else{
+                                    msgError = "Hubo un error al crear la cuenta."
+                                    showLoadingDialog = false
+                                    showErrorDialog = true
+                                    // La solicitud no fue exitosa. Puedes manejar el error aquí.
+                                    val errorBody = call.errorBody()
+                                    if (errorBody != null) {
+                                        val errorMessage = errorBody.string()
+                                        println("Error en la solicitud: $errorMessage")
+                                    } else {
+                                        println("Error en la solicitud, pero no se pudo obtener el mensaje de error.")
+                                    }
+                                }
+                            }catch (e:Exception){
+                                println("Error: ${e.message}")
+                            }
+                        }
+                    }else{
+                        msgError = "Completa todos los campos"
+                        showLoadingDialog = false
+                        showErrorDialog = true
+                    }
+
+                }else{
+                    msgError = "Las contraseñas deben coincidir"
+                    showLoadingDialog = false
+                    showErrorDialog = true
+                }
+
+
+            },
                 modifier = Modifier.align(Alignment.CenterHorizontally),
                 colors = ButtonDefaults.buttonColors(primaryColor)
             ) {

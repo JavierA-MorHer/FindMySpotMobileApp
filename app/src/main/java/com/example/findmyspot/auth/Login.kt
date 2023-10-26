@@ -69,7 +69,9 @@ class Login : ComponentActivity() {
             finish()
         } else {
             setContent {
-                LoginComponent()
+                FindMySpotTheme() {
+                    LoginComponent()
+                }
             }
         }
 
@@ -114,8 +116,6 @@ class Login : ComponentActivity() {
         var showErrorDialog by remember { mutableStateOf(false) }
         var msgError by remember { mutableStateOf("") }
 
-
-        // Muestra el diálogo de carga cuando isLoading es verdadero
         if (showLoadingDialog) {
             AlertDialog(
                 onDismissRequest = { /* No hacer nada al hacer clic fuera del diálogo */ },
@@ -201,7 +201,6 @@ class Login : ComponentActivity() {
                     showLoadingDialog = true
 
                     val requestBody = User(email = emailInputValue, password = passwordInputValue)
-
                     CoroutineScope(Dispatchers.IO).launch {
                         try {
                             val call = getRetrofit().create(ApiAuthService::class.java).login(requestBody)

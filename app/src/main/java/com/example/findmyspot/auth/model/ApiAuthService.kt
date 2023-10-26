@@ -10,5 +10,5 @@ interface ApiAuthService {
     suspend fun login(@Body requestBody: User):Response<User>
 
      @POST("api/Usuarios")
-     suspend fun createUser(@Body requestBody: User):Response<User>
+     suspend fun createUser(@Body requestBody: NewUser):Response<User>
 }
