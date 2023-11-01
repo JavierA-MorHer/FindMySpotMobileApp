@@ -1,12 +1,10 @@
 package com.example.findmyspot.activities
 
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
-import android.graphics.Point
 import android.os.Bundle
-import android.view.Display
-import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
@@ -14,6 +12,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -33,6 +32,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.findmyspot.components.MenuLateral
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.MultiFormatWriter
 import com.google.zxing.common.BitMatrix
@@ -41,20 +41,22 @@ import com.google.zxing.common.BitMatrix
 class NewQR : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent{Title()}
+        val menu = MenuLateral()
+        setContent{
+            menu.MenuLateral { GenerateNewQR() }
+        }
 
     }
 
     @Preview(showBackground = true)
     @Composable
-    fun Title() {
+    fun GenerateNewQR() {
+
+        val sharedPreferences = getSharedPreferences("FindMySpot", Context.MODE_PRIVATE)
+        val idUsuario = sharedPreferences.getString("id", null)
 
         var qrCodeBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
-
-        // Text para generar el código QR
-        val qrCodeText = "https://www.youtube.com"
-
-        // Tamaño del código QR
+        val qrCodeText = idUsuario.toString()
         val qrCodeSize = 400
 
         // Generar el código QR
@@ -65,14 +67,7 @@ class NewQR : ComponentActivity() {
         }
 
         Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-            Text(
-                text = "FindMySpot", fontSize = 40.sp,
-                modifier =
-                Modifier.fillMaxWidth()
-                    .padding(20.dp)
-                    .wrapContentHeight(align = Alignment.Top),
-                textAlign = TextAlign.Center,
-            )
+            Spacer(modifier = Modifier.height(60.dp))
 
             Text(text = "Entrar al estacionamiento", fontSize = 20.sp, modifier =
             Modifier
@@ -89,7 +84,6 @@ class NewQR : ComponentActivity() {
 
             Spacer(modifier = Modifier.width(50.dp))
 
-            // Mostrar el código QR
             qrCodeBitmap?.let { qrCode ->
                 Image(
                     bitmap = qrCode,

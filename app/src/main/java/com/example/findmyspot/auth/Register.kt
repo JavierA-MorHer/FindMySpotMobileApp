@@ -51,6 +51,7 @@ import com.example.findmyspot.auth.model.ApiAuthService
 import com.example.findmyspot.auth.model.NewUser
 import com.example.findmyspot.auth.model.User
 import com.example.findmyspot.auth.model.isValid
+import com.example.findmyspot.helpers.getRetrofitUsuarios
 import com.example.findmyspot.ui.theme.FindMySpotTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -62,17 +63,8 @@ class Register : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            FindMySpotTheme() {
-                RegisterComponent()
-            }
+            RegisterComponent()
         }
-    }
-
-    private fun getRetrofit(): Retrofit {
-        return Retrofit.Builder()
-            .baseUrl("https://findmyspotservices.up.railway.app/")
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
     }
 
     private fun setSharedPreferences(usuario: User) {
@@ -257,7 +249,7 @@ class Register : ComponentActivity() {
                     if (newUser.isValid()){
                         CoroutineScope(Dispatchers.IO).launch {
                             try {
-                                val call = getRetrofit().create(ApiAuthService::class.java).createUser(newUser)
+                                val call = getRetrofitUsuarios().create(ApiAuthService::class.java).createUser(newUser)
                                 if(call.code()== 200){
                                     val usuario = call.body()
 

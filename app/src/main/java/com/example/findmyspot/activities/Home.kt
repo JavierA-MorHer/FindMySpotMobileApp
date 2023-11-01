@@ -6,7 +6,6 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,7 +26,6 @@ import androidx.compose.ui.Alignment.Companion.CenterHorizontally
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.findmyspot.Data
@@ -37,10 +35,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Divider
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -66,6 +62,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.findmyspot.auth.Login
+import com.example.findmyspot.components.MenuLateral
 import com.example.findmyspot.ui.theme.FindMySpotTheme
 import kotlinx.coroutines.launch
 
@@ -77,82 +74,10 @@ class Home : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val menu = MenuLateral()
         setContent{
-            FindMySpotTheme(false) {
-                Inicio()
-            }
+            menu.MenuLateral { HomeComponent(messages = Data.conversationSample) }
         }
-    }
-
-    @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
-    @OptIn(ExperimentalMaterial3Api::class)
-    @Composable
-    fun Inicio() {
-        val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-        val scope = rememberCoroutineScope()
-        val sharedPreferences = getSharedPreferences("FindMySpot", Context.MODE_PRIVATE)
-        val nombre = sharedPreferences.getString("nombre", null)
-
-        ModalNavigationDrawer(
-            drawerContent = {
-                ModalDrawerSheet {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(imageVector = Icons.Filled.Person, contentDescription = "Nombre")
-                        Text("Hola, $nombre",fontSize = 20.sp, modifier = Modifier.padding(16.dp))
-                    }
-                    Divider()
-                    NavigationDrawerItem(
-                        label = { Text(text = "Cerrar sesión") },
-                        selected = false,
-                        onClick = {
-                           logOut()
-                                  },
-                        icon = {
-                            Icon(imageVector = Icons.Filled.Close, contentDescription = "Cerrar sesion")
-                        }
-                    )
-                    // ...other drawer items
-                }
-            },
-            modifier = Modifier.padding(10.dp),
-            drawerState =drawerState
-        ) {
-            Scaffold (
-                topBar = {
-                    TopAppBar(title = {
-                       Text(text = "FindMySpot")
-                    },
-                        navigationIcon = {
-                            IconButton(onClick = {
-                                scope.launch {
-                                    drawerState.open()
-                                }
-                            }) {
-                                Icon(imageVector = Icons.Default.Menu, contentDescription = "Menu")
-                            }
-                        }
-                    )
-                }
-                ){
-                           HomeComponent(Data.conversationSample)
-            }
-        }
-
-
-
-    }
-
-    private fun logOut(){
-        val sharedPreferences = getSharedPreferences("FindMySpot", Context.MODE_PRIVATE)
-        val editor = sharedPreferences.edit()
-        editor.remove("isLoggedIn")
-        editor.apply()
-
-        val intent = Intent(this, Login::class.java)
-        startActivity(intent)
-        finish()
     }
 
     @Composable
@@ -168,12 +93,13 @@ class Home : ComponentActivity() {
         Column( modifier = Modifier.fillMaxSize()) {
             Column(
             ) {
+                Spacer(modifier = Modifier.height(80.dp))
 
                 Text(text = "Bienvenido $nombre", fontSize = 20.sp, modifier =
                 Modifier
                     .fillMaxWidth()
                     .wrapContentHeight(align = Alignment.Top),
-                    textAlign = TextAlign.Left,
+                    textAlign = TextAlign.Center,
                 )
                 when(isVisible){
                      false -> BotonArea(context)
@@ -298,7 +224,7 @@ class Home : ComponentActivity() {
                 Modifier
                     .fillMaxWidth()
                     .wrapContentHeight(align = Alignment.Top),
-                    textAlign = TextAlign.Left,
+                    textAlign = TextAlign.Center,
                 )
                 Spacer(modifier = Modifier.height(25.dp))
                 Button(onClick = { entrarAlEstacionamiento(context) },
