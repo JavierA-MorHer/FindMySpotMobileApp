@@ -4,5 +4,5 @@ data class Estacionamiento(
     val idEstacionamiento:String,
     val nombre:String,
     val direccion:String,
-    val capacidad:String,
+    val capacidad:Int,
 )

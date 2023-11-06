@@ -16,3 +16,10 @@ fun getRetrofitEstacionamientos(): Retrofit {
         .addConverterFactory(GsonConverterFactory.create())
         .build()
 }
+
+fun getRetrofitEntradas(): Retrofit {
+    return Retrofit.Builder()
+        .baseUrl("https://findmyspotservicesentradas.up.railway.app/")
+        .addConverterFactory(GsonConverterFactory.create())
+        .build()
+}

@@ -18,6 +18,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -48,6 +49,7 @@ import com.example.findmyspot.components.MenuLateral
 import com.example.findmyspot.estacionamiento.model.ApiEstacionamientoService
 import com.example.findmyspot.estacionamiento.model.Estacionamiento
 import com.example.findmyspot.helpers.getRetrofitEstacionamientos
+import com.example.findmyspot.helpers.isInternetAvailable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -56,12 +58,18 @@ import kotlinx.coroutines.launch
 class ReservarLugar : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val menu = MenuLateral()
-        setContent {
-            menu.MenuLateral {
-                ResevarLugar()
+        if (isInternetAvailable(this)) {
+            val menu = MenuLateral()
+            setContent {
+                menu.MenuLateral {
+                    ResevarLugar()
+                }
             }
+        }else{
+            val intent = Intent(this, NoInternet::class.java)
+            startActivity(intent)
         }
+
     }
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -72,6 +80,24 @@ class ReservarLugar : ComponentActivity() {
         var estacionamientos by remember { mutableStateOf(emptyList<String>()) }
         var selectedText by remember { mutableStateOf("Selecciona un estacionamiento") }
         var showLoadingDialog by remember { mutableStateOf(false) }
+        var showErrorDialog by remember { mutableStateOf(false) }
+
+        if (showErrorDialog) {
+            AlertDialog(
+                onDismissRequest = { showErrorDialog = false },
+                title = { Text("Selecciona un estacionamiento") },
+                text = {  },
+                confirmButton = {},
+                dismissButton = {
+                    Button(
+                        onClick = { showErrorDialog = false }
+                    ) {
+                        Text("Cerrar")
+                    }
+                }
+            )
+        }
+
 
         if (showLoadingDialog) {
             AlertDialog(
@@ -87,11 +113,8 @@ class ReservarLugar : ComponentActivity() {
 
        LaunchedEffect(Unit) {
            showLoadingDialog = true
-
            estacionamientos = fillDropDown()
-
            showLoadingDialog = false
-
        }
 
         Column(
@@ -138,7 +161,22 @@ class ReservarLugar : ComponentActivity() {
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(30.dp))
+            Button(onClick = {
+                if (selectedText.contains("Selecciona")){
+                    showErrorDialog = true
+                }else{
+                    resevarLugar(selectedText)
+                }
+            }) {
+                Text(text = "Resevar lugar")
+            }
         }
+    }
+
+    private fun resevarLugar(selectedText: String) {
+        println("Reservando lugar en estacionamiento: $selectedText")
     }
 
 

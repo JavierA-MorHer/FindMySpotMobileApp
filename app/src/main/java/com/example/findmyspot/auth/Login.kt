@@ -3,6 +3,7 @@ package com.example.findmyspot.auth
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
@@ -47,9 +48,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import com.example.findmyspot.activities.Home
+import com.example.findmyspot.activities.NoInternet
 import com.example.findmyspot.auth.model.ApiAuthService
 import com.example.findmyspot.auth.model.User
 import com.example.findmyspot.helpers.getRetrofitUsuarios
+import com.example.findmyspot.helpers.isInternetAvailable
 import com.example.findmyspot.ui.theme.FindMySpotTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -64,15 +67,22 @@ class Login : ComponentActivity() {
         val sharedPreferences = getSharedPreferences("FindMySpot", Context.MODE_PRIVATE)
         val isLoggedIn = sharedPreferences.getBoolean("isLoggedIn", false)
 
-        if (isLoggedIn) {
-            val intent = Intent(this, Home::class.java)
-            startActivity(intent)
-            finish()
-        } else {
-            setContent {
-                LoginComponent()
+        if (isInternetAvailable(this)) {
+            if (isLoggedIn) {
+                val intent = Intent(this, Home::class.java)
+                startActivity(intent)
+                finish()
+            } else {
+                setContent {
+                    LoginComponent()
+                }
             }
+        } else {
+            val intent = Intent(this, NoInternet::class.java)
+            startActivity(intent)
         }
+
+        
 
 
     }
@@ -87,7 +97,7 @@ class Login : ComponentActivity() {
         editor.putString("telefono", usuario.telefono)
         editor.putString("email", usuario.email)
         editor.putString("password", usuario.password)
-        editor.putString("id",usuario.id_Usuario)
+        editor.putInt("id",usuario.id_Usuario.toInt())
         editor.putBoolean("isLoggedIn", true)
         editor.apply()
     }

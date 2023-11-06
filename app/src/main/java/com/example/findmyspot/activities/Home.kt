@@ -1,11 +1,14 @@
 package com.example.findmyspot.activities
 
-import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.annotation.RequiresApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Button
@@ -33,38 +37,38 @@ import com.example.findmyspot.Message
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material3.Divider
-import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.ModalDrawerSheet
-import androidx.compose.material3.ModalNavigationDrawer
-import androidx.compose.material3.NavigationDrawerItem
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberDrawerState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment.Companion.End
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.example.findmyspot.auth.Login
 import com.example.findmyspot.components.MenuLateral
+import com.example.findmyspot.estacionamiento.model.ApiEstacionamientoService
+import com.example.findmyspot.helpers.getRetrofitEstacionamientos
+import com.example.findmyspot.helpers.isInternetAvailable
 import com.example.findmyspot.ui.theme.FindMySpotTheme
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.MultiFormatWriter
+import com.google.zxing.common.BitMatrix
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.math.BigDecimal
+import java.time.Duration
+import java.time.LocalTime
 
 var primaryColor = Color(0xFF228B22)
 val secondaryColor = Color(0xFFD9D9D9)
@@ -74,21 +78,35 @@ class Home : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val menu = MenuLateral()
-        setContent{
-            menu.MenuLateral { HomeComponent(messages = Data.conversationSample) }
+
+        if (isInternetAvailable(this)) {
+            val menu = MenuLateral()
+            setContent{
+                menu.MenuLateral { HomeComponent(messages = Data.conversationSample) }
+            }
+        }else{
+            val intent = Intent(this, NoInternet::class.java)
+            startActivity(intent)
         }
+
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     @Composable
     fun HomeComponent(messages:List<Message>){
-
         val sharedPreferences = getSharedPreferences("FindMySpot", Context.MODE_PRIVATE)
         val nombre = sharedPreferences.getString("nombre", null)
+        val entradaActiva = sharedPreferences.getBoolean("EstanciaActiva", false)
+
+        println("estancia activa $entradaActiva")
+
 
         val context = LocalContext.current
-        var isVisible by remember { mutableStateOf(true) }
-        isVisible = false
+        var isVisible by remember { mutableStateOf(false) }
+
+        if(entradaActiva){
+            isVisible = true
+        }
 
         Column( modifier = Modifier.fillMaxSize()) {
             Column(
@@ -104,7 +122,7 @@ class Home : ComponentActivity() {
                 when(isVisible){
                      false -> BotonArea(context)
                     else -> {
-                        EstanciaEnCurso()
+                        EstanciaEnCurso(0.44.toBigDecimal())
                     }
                 }
 
@@ -121,8 +139,51 @@ class Home : ComponentActivity() {
         }
 
     }
+    @RequiresApi(Build.VERSION_CODES.O)
     @Composable
-    fun EstanciaEnCurso() {
+    fun EstanciaEnCurso(tarifaPorMinuto:BigDecimal) {
+        var estacionamientoActual by remember{ mutableStateOf("Cargando...") }
+        val sharedPreferences = getSharedPreferences("FindMySpot", Context.MODE_PRIVATE)
+        val horaEntrada = sharedPreferences.getString("HoraInicio", null)
+
+        var tiempoAcumulado by remember { mutableStateOf(Duration.ZERO) }
+        var totalAcumulado by remember { mutableStateOf(BigDecimal.ZERO) }
+        val minutosTarifaMinima = 30
+
+        var isDialogOpen by remember { mutableStateOf(false) }
+
+
+        val horaInicio = runCatching {
+            LocalTime.parse(horaEntrada)
+        }.getOrNull()
+
+        val scope = rememberCoroutineScope()
+
+        if (horaInicio != null) {
+            LaunchedEffect(true) {
+                scope.launch(Dispatchers.IO) {
+                    while (true) {
+                        val horaActual = LocalTime.now()
+                        tiempoAcumulado = Duration.between(horaInicio, horaActual)
+                        val minutos = tiempoAcumulado.toMinutes()
+                        if (tiempoAcumulado.toMinutes() <= minutosTarifaMinima) {
+                            totalAcumulado = tarifaPorMinuto
+                        } else {
+                            // Después de 30 minutos, calculamos la tarifa adicional
+                            val minutosAdicionales = tiempoAcumulado.toMinutes() - minutosTarifaMinima
+                            val tarifaAdicional = tarifaPorMinuto * BigDecimal(minutosAdicionales)
+                            totalAcumulado = tarifaPorMinuto + tarifaAdicional
+                        }
+                        delay(1000)
+                    }
+                }
+            }
+        }
+
+        LaunchedEffect(Unit) {
+            estacionamientoActual = getEstacionamiento() as String
+        }
+
         Box(
             modifier = Modifier
                 .padding(all = 16.dp)
@@ -142,28 +203,75 @@ class Home : ComponentActivity() {
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.height(40.dp))
-                Text(text = "Estacionamiento: ",fontSize = 15.sp)
+                Row() {
+                    Text(text = "Estacionamiento: ",fontSize = 15.sp)
+                    Text(text = estacionamientoActual,fontSize = 15.sp)
+
+                }
+
                 Spacer(modifier = Modifier.height(10.dp))
-                Text(text = "Hora de entrada: ",fontSize = 15.sp)
+                Row(){
+                    Text(text = "Hora de entrada: ",fontSize = 15.sp)
+                    if (horaEntrada != null) {
+                        Text(text = horaEntrada,fontSize = 15.sp)
+                    }
+
+                }
                 Spacer(modifier = Modifier.height(10.dp))
-                Text(text = "Tiempo acumulado: ",fontSize = 15.sp)
+                Row() {
+                    Text(text = "Tiempo acumulado: ",fontSize = 15.sp)
+                    Text("${tiempoAcumulado.toHours()}:${tiempoAcumulado.toMinutesPart()}:${tiempoAcumulado.toSecondsPart()}")
+                }
                 Spacer(modifier = Modifier.height(25.dp))
-                Text(text = "Total al momento: ",modifier = Modifier.fillMaxWidth(),textAlign = TextAlign.Center,fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Row() {
+                    Text(text = "Total al momento: ",fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    Text(text = "$$totalAcumulado ",fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                }
                 Spacer(modifier = Modifier.height(20.dp))
-                Button(onClick = {  },
+                Button(onClick = {
+                    isDialogOpen = true
+                },
                     colors = ButtonDefaults.buttonColors(primaryColor),
                     modifier = Modifier
                         .align(CenterHorizontally)
                         .fillMaxWidth(),
                 ) {
-                    Text(text = "Ver QR", fontSize = 18.sp, modifier =
+                    Text(text = "Pagar salida", fontSize = 18.sp, modifier =
                     Modifier
                         .wrapContentHeight(align = Alignment.Top),
                         textAlign = TextAlign.Center,
                     )
                 }
+
             }
         }
+        if (isDialogOpen) {
+            ModalQR(onDismiss = { isDialogOpen = false })
+        }
+    }
+
+    private suspend fun getEstacionamiento(): Any {
+        val sharedPreferences = getSharedPreferences("FindMySpot", Context.MODE_PRIVATE)
+        val idEstacionamiento = sharedPreferences.getInt("idEstacionamiento", 0)
+
+        return CoroutineScope(Dispatchers.IO).async {
+            try {
+                val call = getRetrofitEstacionamientos().create(ApiEstacionamientoService::class.java).getEstacionamientoById(idEstacionamiento)
+                if (call.code() == 200) {
+                    val estacionamientoResponse = call.body()
+
+                    if (estacionamientoResponse != null) {
+                        println( estacionamientoResponse)
+                        return@async estacionamientoResponse.nombre
+                    }
+                } else {
+                   println("ERROR")
+                }
+                return@async ""
+            } catch (e: Exception) {
+                return@async ""
+            }
+        }.await()
     }
 
     private fun entrarAlEstacionamiento(context: Context) {
@@ -303,6 +411,63 @@ class Home : ComponentActivity() {
             }
 
         }
+    }
+
+    @Composable
+    private fun ModalQR(onDismiss: () -> Unit) {
+
+
+        Dialog(
+            onDismissRequest = { onDismiss() },
+            properties = DialogProperties(dismissOnClickOutside = true),
+        ) {
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = Color.White
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Column(
+                        modifier = Modifier
+                            .padding(16.dp)
+                    ) {
+
+
+
+                        Button(
+                            onClick = { onDismiss() },
+                            colors = ButtonDefaults.buttonColors(primaryColor),
+                            modifier = Modifier
+                                .padding(top = 16.dp)
+                                .align(End),
+                        ) {
+                            Text("Cerrar")
+                        }
+                    }
+                }
+            }
+
+        }
+    }
+
+
+    private fun BitMatrix.toBitmap(): Bitmap {
+        val width = this.width
+        val height = this.height
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+
+        for (x in 0 until width) {
+            for (y in 0 until height) {
+                bitmap.setPixel(x, y, if (this[x, y]) android.graphics.Color.BLACK else android.graphics.Color.WHITE)
+            }
+        }
+
+        return bitmap
+    }
+
+
+    private fun generarQR(text: String, width: Int, height: Int): BitMatrix {
+        val multiFormatWriter = MultiFormatWriter()
+        return multiFormatWriter.encode(text, BarcodeFormat.QR_CODE, width, height)
     }
 
     //@Preview(showBackground = true)
