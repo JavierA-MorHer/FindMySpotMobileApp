@@ -23,3 +23,17 @@ fun getRetrofitEntradas(): Retrofit {
         .addConverterFactory(GsonConverterFactory.create())
         .build()
 }
+
+fun getRetrofitSalidas(): Retrofit {
+    return Retrofit.Builder()
+        .baseUrl("https://findmyspotsalidas-production.up.railway.app/")
+        .addConverterFactory(GsonConverterFactory.create())
+        .build()
+}
+
+fun getRetrofitPagos(): Retrofit {
+    return Retrofit.Builder()
+        .baseUrl("https://findmyspotspringboot-production.up.railway.app/")
+        .addConverterFactory(GsonConverterFactory.create())
+        .build()
+}

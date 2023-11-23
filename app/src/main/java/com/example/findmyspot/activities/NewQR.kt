@@ -21,7 +21,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -34,17 +36,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.findmyspot.auth.model.ApiAuthService
-import com.example.findmyspot.auth.model.NewUser
 import com.example.findmyspot.components.MenuLateral
-import com.example.findmyspot.entradas.NuevaEntrada
+import com.example.findmyspot.entradas.model.NuevaEntrada
 import com.example.findmyspot.entradas.model.ApiEntradaService
+import com.example.findmyspot.entradas.model.Entrada
 import com.example.findmyspot.helpers.getRetrofitEntradas
-import com.example.findmyspot.helpers.getRetrofitUsuarios
 import com.example.findmyspot.helpers.isInternetAvailable
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.MultiFormatWriter
@@ -86,6 +89,12 @@ class NewQR : ComponentActivity() {
         val qrCodeText = idUsuario.toString()
         val qrCodeSize = 400
 
+        val textStyle = TextStyle(
+            color = white,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold
+        )
+
         // Generar el código QR
         LaunchedEffect(qrCodeText) {
             val bitMatrix: BitMatrix = generarQR(qrCodeText, qrCodeSize, qrCodeSize)
@@ -121,10 +130,12 @@ class NewQR : ComponentActivity() {
                 )
             }
 
-            Button(onClick = { registrarEntrada(context) }) {
-                Text(text = "Registrar Entrada")
-            }
-
+            ClickableText(
+                text = AnnotatedString("ENTRAR"),
+                style = textStyle,
+                onClick = {
+                    registrarEntrada(context)
+                })
         }
 
     }
@@ -142,19 +153,27 @@ class NewQR : ComponentActivity() {
         val sharedPreferences = getSharedPreferences("FindMySpot", Context.MODE_PRIVATE)
         val idUsuario = sharedPreferences.getInt("id", 0)
         val date = obtenerFechaEnFormatoDeseado()
-        val nuevaEntrada = NuevaEntrada(idUsuario,3,date)
+        val nuevaEntrada = NuevaEntrada(idUsuario,3)
+
+        println(nuevaEntrada)
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val call = getRetrofitEntradas().create(ApiEntradaService::class.java).registrarEntrada(nuevaEntrada)
-                if(call.code()== 200) {
+              println(call.body())
+                if(call.isSuccessful) {
+                    println(call.code())
+
                     val entrada = call.body()
 
                     if (entrada != null) {
-                        setEntradaActiva(entrada.idEstacionamiento.toInt())
+                        setEntradaActiva(entrada.id_Estacionamiento.toInt(),entrada.id_Entrada.toInt())
                         val intent = Intent(context, Home::class.java)
                         context.startActivity(intent)
+                    }else{
+
                     }
+
                 }else{
                     // La solicitud no fue exitosa. Puedes manejar el error aquí.
                     val errorBody = call.errorBody()
@@ -172,13 +191,15 @@ class NewQR : ComponentActivity() {
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
-    private fun setEntradaActiva(idEstacionamiento:Int) {
+    private fun setEntradaActiva(idEstacionamiento:Int,idEntrada: Int) {
         val sharedPreferences = getSharedPreferences("FindMySpot", Context.MODE_PRIVATE)
         val editor = sharedPreferences.edit()
 
         editor.putBoolean("EstanciaActiva", true)
         editor.putString("HoraInicio",obtenerHoraYMinutos())
         editor.putInt("idEstacionamiento", idEstacionamiento)
+        editor.putInt("idEntrada", idEntrada)
+
 
         editor.apply()
     }

@@ -77,7 +77,7 @@ class Register : ComponentActivity() {
         editor.putString("telefono", usuario.telefono)
         editor.putString("email", usuario.email)
         editor.putString("password", usuario.password)
-        editor.putString("id",usuario.id_Usuario)
+        editor.putInt("id",usuario.id_Usuario.toInt())
         editor.putBoolean("isLoggedIn", true)
         editor.apply()
     }

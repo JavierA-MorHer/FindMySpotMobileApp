@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.example.findmyspot.activities.Home
+import com.example.findmyspot.activities.MetodosPago
 import com.example.findmyspot.auth.Login
 import com.example.findmyspot.ui.icons.CustomIcons
 import kotlinx.coroutines.launch
@@ -83,7 +84,7 @@ class MenuLateral: ComponentActivity() {
                         label = { Text(text = "Métodos de pago") },
                         selected = false,
                         onClick = {
-                            home(activity)
+                            metodosPago(activity)
                         },
                         icon = {
                             Icon(imageVector = icons.CreditCardIcon(), contentDescription = "Metodos de pago")
@@ -142,6 +143,12 @@ class MenuLateral: ComponentActivity() {
 
     private fun home(activity: ComponentActivity){
         val intent = Intent(activity, Home::class.java)
+        ContextCompat.startActivity(activity,intent,null)
+        activity.finish()
+    }
+
+    private fun metodosPago(activity: ComponentActivity){
+        val intent = Intent(activity, MetodosPago::class.java)
         ContextCompat.startActivity(activity,intent,null)
         activity.finish()
     }

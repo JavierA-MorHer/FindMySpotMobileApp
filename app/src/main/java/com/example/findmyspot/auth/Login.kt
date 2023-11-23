@@ -223,6 +223,7 @@ class Login : ComponentActivity() {
                                 // La solicitud no fue exitosa. Puedes manejar el error aquí.
                                 val errorBody = call.errorBody()
                                 if (errorBody != null) {
+                                    println("CODIGO ERROR: ${call.code()}")
                                     val errorMessage = errorBody.string()
                                     println("Error en la solicitud: $errorMessage")
                                 } else {
@@ -231,6 +232,9 @@ class Login : ComponentActivity() {
                             }
                         }catch (e:Exception){
                             println("Error: ${e.message}")
+                            msgError = "Se perdio la comunicacion con el servidor"
+                            showLoadingDialog = false
+                            showErrorDialog = true
                         }
                     }
                 }else{

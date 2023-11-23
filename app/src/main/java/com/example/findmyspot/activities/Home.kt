@@ -10,6 +10,8 @@ import androidx.activity.compose.setContent
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Button
@@ -32,14 +35,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.findmyspot.Data
-import com.example.findmyspot.Message
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.ClickableText
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -48,16 +52,17 @@ import androidx.compose.ui.Alignment.Companion.End
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.findmyspot.components.MenuLateral
+import com.example.findmyspot.entradas.model.EntradaReciente
+import com.example.findmyspot.entradas.model.ApiEntradaService
 import com.example.findmyspot.estacionamiento.model.ApiEstacionamientoService
+import com.example.findmyspot.helpers.getRetrofitEntradas
 import com.example.findmyspot.helpers.getRetrofitEstacionamientos
 import com.example.findmyspot.helpers.isInternetAvailable
-import com.example.findmyspot.ui.theme.FindMySpotTheme
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.MultiFormatWriter
 import com.google.zxing.common.BitMatrix
@@ -69,20 +74,35 @@ import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.LocalTime
+import java.time.format.DateTimeFormatter
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.LottieConstants
+import com.airbnb.lottie.compose.rememberLottieComposition
+import com.example.findmyspot.R
+import com.example.findmyspot.helpers.getRetrofitPagos
+import com.example.findmyspot.helpers.getRetrofitSalidas
+import com.example.findmyspot.pagos.model.ApiPagosService
+import com.example.findmyspot.pagos.model.Pago
+import com.example.findmyspot.salidas.model.ApiSalidaService
+import com.example.findmyspot.salidas.model.NuevaSalida
 
 var primaryColor = Color(0xFF228B22)
 val secondaryColor = Color(0xFFD9D9D9)
+val white = Color(0xFFFFFFFF)
 val bgColor = Color(0xFFD9D9D9)
+lateinit var tiempoTotal:BigDecimal
 
 class Home : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        tiempoTotal = BigDecimal.ZERO
 
         if (isInternetAvailable(this)) {
             val menu = MenuLateral()
             setContent{
-                menu.MenuLateral { HomeComponent(messages = Data.conversationSample) }
+                menu.MenuLateral { HomeComponent() }
             }
         }else{
             val intent = Intent(this, NoInternet::class.java)
@@ -91,14 +111,47 @@ class Home : ComponentActivity() {
 
     }
 
+    private suspend fun getListaRecientes(): Array<EntradaReciente> {
+        val sharedPreferences = getSharedPreferences("FindMySpot", Context.MODE_PRIVATE)
+        val idUsuario = sharedPreferences.getInt("id", 0)
+
+        return CoroutineScope(Dispatchers.IO).async {
+            try {
+                val call = getRetrofitEntradas().create(ApiEntradaService::class.java).ultimasEntradas(idUsuario)
+                if (call.isSuccessful) {
+                    val estacionamientoResponse: Array<EntradaReciente>? = call.body()
+
+                    if (estacionamientoResponse != null) {
+                        return@async estacionamientoResponse // Devolver la respuesta del servicio
+                    }
+                } else {
+                    println("ERROR")
+                }
+                return@async emptyArray<EntradaReciente>()
+            } catch (e: Exception) {
+                println("Error ${e.message}")
+                return@async emptyArray<EntradaReciente>()
+            }
+        }.await()
+    }
+
     @RequiresApi(Build.VERSION_CODES.O)
     @Composable
-    fun HomeComponent(messages:List<Message>){
+    fun HomeComponent(){
         val sharedPreferences = getSharedPreferences("FindMySpot", Context.MODE_PRIVATE)
         val nombre = sharedPreferences.getString("nombre", null)
+
+
+
         val entradaActiva = sharedPreferences.getBoolean("EstanciaActiva", false)
 
-        println("estancia activa $entradaActiva")
+        var visitasRecientes by remember { mutableStateOf(emptyArray<EntradaReciente>()) }
+
+        LaunchedEffect(Unit) {
+            visitasRecientes = getListaRecientes()
+
+
+        }
 
 
         val context = LocalContext.current
@@ -126,17 +179,67 @@ class Home : ComponentActivity() {
                     }
                 }
 
-                Text(text = "Tus visitas mas recientes", fontSize = 20.sp, textAlign = TextAlign.Center,
-                )
 
-                LazyColumn {
-                    items(messages) { _ ->
-                        Card()
+                if(visitasRecientes.isNotEmpty()){
+                    Spacer(modifier = Modifier.height(15.dp))
+                    Text(text = "Tus visitas más recientes", fontSize = 20.sp, textAlign = TextAlign.Center)
+                    LazyColumn {
+                        items(visitasRecientes) { entrada ->
+                            Card(entrada)
+                        }
                     }
+                }else{
+
+                    LottieEmpty( )
                 }
+
             }
 
         }
+
+    }
+
+    private suspend fun getStatusEstancia(): Boolean {
+        val sharedPreferences = getSharedPreferences("FindMySpot", Context.MODE_PRIVATE)
+        val idEstacionamiento = sharedPreferences.getInt("idEstacionamiento", 0)
+
+        return CoroutineScope(Dispatchers.IO).async {
+            try {
+                val call = getRetrofitPagos().create(ApiPagosService::class.java).verificarEstancia(idEstacionamiento)
+                if (call.code() == 200) {
+                    val estacionamientoResponse = call.body()
+
+                    if (estacionamientoResponse != null) {
+                        println( estacionamientoResponse)
+                        return@async true
+                    }
+                } else {
+                    println("ERROR")
+                }
+                return@async false
+            } catch (e: Exception) {
+                return@async false
+            }
+        }.await()
+    }
+
+    @Composable
+    fun LottieEmpty() {
+        val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.empty))
+
+        Column(
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(text = "No hay visitas recientes",color = Color.Gray , fontSize = 17.sp, textAlign = TextAlign.Center,)
+
+            LottieAnimation(
+                modifier = Modifier.height(350.dp),
+                composition = composition,
+                iterations = LottieConstants.IterateForever,
+            )
+        }
+
 
     }
     @RequiresApi(Build.VERSION_CODES.O)
@@ -173,6 +276,7 @@ class Home : ComponentActivity() {
                             val minutosAdicionales = tiempoAcumulado.toMinutes() - minutosTarifaMinima
                             val tarifaAdicional = tarifaPorMinuto * BigDecimal(minutosAdicionales)
                             totalAcumulado = tarifaPorMinuto + tarifaAdicional
+                            tiempoTotal = totalAcumulado
                         }
                         delay(1000)
                     }
@@ -283,7 +387,7 @@ class Home : ComponentActivity() {
         context.startActivity(intent)
     }
     @Composable
-    fun Card(){
+    fun Card(entrada: EntradaReciente){
         var isDialogOpen by remember { mutableStateOf(false) }
 
         val textStyle = TextStyle(
@@ -304,20 +408,20 @@ class Home : ComponentActivity() {
             Column(modifier = Modifier
                 .padding(30.dp)
                 .fillMaxWidth(), ) {
-                Text(text = "Estacionamiento Altacia", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
-                Text(text = "Fecha:")
-                Text(text = "Duracion:")
-                Text(text = "Total:")
-                ClickableText(
-                    text = AnnotatedString("Ver detalle"),
-                    modifier = Modifier.align(End),
-                    style = textStyle,
-                    onClick = {
-                        isDialogOpen = true
-                    })
-                if (isDialogOpen) {
-                    ModalDetail(onDismiss = { isDialogOpen = false })
-                }
+                Text(text = entrada.estacionamiento,
+                    modifier = Modifier.fillMaxWidth(),
+                    style = LocalTextStyle.current.copy(
+                        fontWeight = FontWeight.Bold
+                    ), fontSize = 20.sp,textAlign = TextAlign.Center)
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Text(text = "Dirección: ${entrada.direccion}",
+                    modifier = Modifier.fillMaxWidth(),
+                    fontSize = 15.sp,textAlign = TextAlign.Center)
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Text(text = "Fecha: ${entrada.fecha.take(10)}")
             }
 
         }
@@ -326,6 +430,7 @@ class Home : ComponentActivity() {
 
     @Composable
     fun BotonArea(context:Context){
+
         Box{
             Column {
                 Text(text = "¿Qué quieres hacer el día de hoy?", fontSize = 15.sp, modifier =
@@ -348,7 +453,7 @@ class Home : ComponentActivity() {
                     )
                 }
                 Row(modifier = Modifier.align(CenterHorizontally)) {
-                    Button(onClick = { reservarLugar(context) },
+                    /*Button(onClick = { reservarLugar(context) },
                         colors = ButtonDefaults.buttonColors(secondaryColor),
                         modifier = Modifier
                             .padding(10.dp)
@@ -360,11 +465,11 @@ class Home : ComponentActivity() {
                             .wrapContentHeight(align = Alignment.Top),
                             textAlign = TextAlign.Center,
                         )
-                    }
+                    }*/
 
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    Button(onClick = {  },
+                    Button(onClick = { openMetodosPago(context) },
                         colors = ButtonDefaults.buttonColors(secondaryColor),
                         modifier = Modifier.padding(10.dp)
                     ) {
@@ -378,6 +483,11 @@ class Home : ComponentActivity() {
             }
 
         }
+    }
+
+    private fun openMetodosPago(context: Context) {
+        val intent = Intent(context, MetodosPago::class.java)
+        context.startActivity(intent)
     }
 
     @Composable
@@ -415,6 +525,9 @@ class Home : ComponentActivity() {
 
     @Composable
     private fun ModalQR(onDismiss: () -> Unit) {
+        var selectedListItem by remember { mutableStateOf<ListItem?>(null) }
+        var isButtonEnabled by remember { mutableStateOf(false) }
+        var isDialogOpen by remember { mutableStateOf(false) }
 
 
         Dialog(
@@ -430,17 +543,104 @@ class Home : ComponentActivity() {
                         modifier = Modifier
                             .padding(16.dp)
                     ) {
+                        Text(text = "Selecciona un método de pago para continuar")
+                        
+                        SelectableList(
+                            items = listOf(
+                                ListItem(id = 1, text = "Tarjeta Terminacion 6789"),
+                                // Add more items as needed
+                            )
+                        ) { selectedItem ->
+                            // Handle item selection here
+                            selectedListItem = selectedItem
+                            isButtonEnabled = true
+                        }
+                        Row( ) {
+                            Button(
+                                onClick = { onDismiss() },
+                                colors = ButtonDefaults.buttonColors(primaryColor),
+                                modifier = Modifier
+                                    .padding(top = 16.dp)
+                            ) {
+                                Text("Cerrar")
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Button(
+                                onClick = { isDialogOpen = true },
+                                colors = ButtonDefaults.buttonColors(primaryColor),
+                                enabled = isButtonEnabled,
+                                modifier = Modifier
+                                    .padding(top = 16.dp)
+                            ) {
+                                Text("Pagar")
+                            }
+                        }
+                    }
+                }
+            }
 
+        }
+        if (isDialogOpen) {
+            ModalQRSalida(onDismiss = { isDialogOpen = false },selectedListItem?.id)
+        }
+    }
 
+    @Composable
+    private fun ModalQRSalida(onDismiss: () -> Unit, idMetodoPago: Int?) {
 
-                        Button(
-                            onClick = { onDismiss() },
-                            colors = ButtonDefaults.buttonColors(primaryColor),
-                            modifier = Modifier
-                                .padding(top = 16.dp)
-                                .align(End),
-                        ) {
-                            Text("Cerrar")
+        var status by remember{ mutableStateOf("PENDING") }
+        var textPayment by remember{ mutableStateOf("Procesando pago...")}
+
+        LaunchedEffect(Unit) {
+            status = realizarPago(idMetodoPago)
+            textPayment = "Pago realizado con éxito, muestra este QR al salir."
+        }
+
+        Dialog(
+            onDismissRequest = { onDismiss() },
+            properties = DialogProperties(dismissOnClickOutside = true),
+        ) {
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = Color.White
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Column(
+                        modifier = Modifier
+                            .padding(16.dp)
+                    ) {
+                        when(status){
+                            "PENDING"->{ Text(text = textPayment) }
+                            "SUCCESS" ->{
+                                Text(text = textPayment)
+                                GenerarQR()
+
+                                Row( ) {
+                                    Button(
+                                        onClick = {  recargarActividad() },
+                                        colors = ButtonDefaults.buttonColors(primaryColor),
+                                        modifier = Modifier
+                                            .padding(top = 16.dp)
+                                    ) {
+                                        Text("Cerrar")
+                                    }
+                                }
+                            }
+                            "ERROR"->{
+                                textPayment = "Hubo un error al realizar el pago, inténtanlo de nuevo."
+                                Text(text = textPayment)
+
+                                Row( ) {
+                                    Button(
+                                        onClick = { onDismiss() },
+                                        colors = ButtonDefaults.buttonColors(primaryColor),
+                                        modifier = Modifier
+                                            .padding(top = 16.dp)
+                                    ) {
+                                        Text("Cerrar")
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -449,6 +649,172 @@ class Home : ComponentActivity() {
         }
     }
 
+    @Composable
+    private fun GenerarQR() {
+        val sharedPreferences = getSharedPreferences("FindMySpot", Context.MODE_PRIVATE)
+        val idUsuario = sharedPreferences.getInt("id", 0)
+
+        var qrCodeBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
+        val qrCodeText = idUsuario.toString()
+        val qrCodeSize = 400
+
+        val bitMatrix: BitMatrix = generarQR(qrCodeText, qrCodeSize, qrCodeSize)
+        val bitmap = bitMatrix.toBitmap()
+        qrCodeBitmap = bitmap.asImageBitmap()
+
+        qrCodeBitmap?.let { qrCode ->
+            Image(
+                bitmap = qrCode,
+                contentDescription = "Código QR",
+                modifier = Modifier.size(qrCodeSize.dp)
+            )
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private suspend fun realizarPago(idMetodoPago: Int?):String {
+        val sharedPreferences = getSharedPreferences("FindMySpot", Context.MODE_PRIVATE)
+        val idEntrada = sharedPreferences.getInt("idEntrada", 0)
+        val idUsuario = sharedPreferences.getInt("id", 0)
+        val nuevoPago = Pago(idUsuario,idEntrada,tiempoTotal.toString())
+
+        return CoroutineScope(Dispatchers.IO).async {
+            try {
+                val call = getRetrofitPagos().create(ApiPagosService::class.java).registrarPago(nuevoPago)
+                if (call.isSuccessful) {
+
+                    val editor = sharedPreferences.edit()
+
+                    editor.putBoolean("EstanciaActiva", false)
+                    editor.putString("HoraFin",obtenerHoraYMinutos())
+                    editor.apply()
+
+                    registrarSalida(idEntrada)
+
+                    return@async "SUCCESS"
+                } else {
+                    // La solicitud no fue exitosa. Puedes manejar el error aquí.
+                    val errorBody = call.errorBody()
+                    if (errorBody != null) {
+                        val errorMessage = errorBody.string()
+                        println("Error en la solicitud: $errorMessage")
+                    } else {
+                        println("Error en la solicitud, pero no se pudo obtener el mensaje de error. PAGOS ${call.code()}")
+                    }
+                }
+                return@async "ERROR"
+            } catch (e: Exception) {
+                return@async "ERROR"
+            }
+        }.await()
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun registrarSalida(id: Int) {
+
+        val nuevaSalida = NuevaSalida(id)
+
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val call = getRetrofitSalidas().create(ApiSalidaService::class.java).registrarSalida(nuevaSalida)
+
+                if(call.isSuccessful) {
+                    println(call.code())
+
+                    val salida = call.body()
+
+                    if (salida != null) {
+                        val sharedPreferences = getSharedPreferences("FindMySpot", Context.MODE_PRIVATE)
+                        val editor = sharedPreferences.edit()
+
+                        editor.putBoolean("EstanciaActiva", false)
+                        editor.putString("HoraFin",obtenerHoraYMinutos())
+                        editor.apply()
+                    }
+                }else{
+                    // La solicitud no fue exitosa. Puedes manejar el error aquí.
+                    val errorBody = call.errorBody()
+                    if (errorBody != null) {
+                        val errorMessage = errorBody.string()
+                        println("Error en la solicitud: $errorMessage")
+                    } else {
+                        println("Error en la solicitud, pero no se pudo obtener el mensaje de error.")
+                    }
+                }
+            }catch (e:Exception){
+                println("Error: ${e.message}")
+            }
+        }
+
+    }
+
+    private fun recargarActividad() {
+        val intent = Intent(this, Home::class.java)
+        startActivity(intent)
+        finish()
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun obtenerHoraYMinutos(): String {
+        val horaActual = LocalTime.now()
+        val formatter = DateTimeFormatter.ofPattern("HH:mm")
+        return horaActual.format(formatter)
+    }
+
+    @Composable
+    private fun CardCredit() {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(text = "img")
+
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(text = "Terminada en 6789")
+                Text(text = "Banco")
+                Text(text = "Vencimiento: 11/24")
+            }
+
+            Text(text = "Eliminar")
+        }
+
+    }
+
+    data class ListItem(val id: Int, val text: String)
+    @Composable
+    fun SelectableList(items: List<ListItem>, onItemSelected: (ListItem) -> Unit) {
+        var selectedItem by remember { mutableStateOf<ListItem?>(null) }
+
+        LazyColumn {
+            items(items) { item ->
+                ListItem(
+                    item = item,
+                    isSelected = selectedItem == item,
+                    onItemSelected = {
+                        selectedItem = item
+                        onItemSelected(item)
+                    }
+                )
+            }
+        }
+    }
+
+    @Composable
+    fun ListItem(item: ListItem, isSelected: Boolean, onItemSelected: () -> Unit) {
+        val background = if (isSelected) Color.Gray else Color.Transparent
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onItemSelected() }
+                .background(background)
+                .padding(16.dp)
+        ) {
+            Text(text = item.text)
+        }
+    }
 
     private fun BitMatrix.toBitmap(): Bitmap {
         val width = this.width
@@ -469,14 +835,5 @@ class Home : ComponentActivity() {
         val multiFormatWriter = MultiFormatWriter()
         return multiFormatWriter.encode(text, BarcodeFormat.QR_CODE, width, height)
     }
-
-    //@Preview(showBackground = true)
-    @Composable
-    fun PreviewHome(){
-        FindMySpotTheme {
-            HomeComponent(Data.conversationSample)
-        }
-    }
-
 }
 
