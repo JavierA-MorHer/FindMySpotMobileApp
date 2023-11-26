@@ -1,8 +1,11 @@
 package com.example.findmyspot.activities
 
+import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.annotation.IntegerRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -27,13 +30,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalTextInputService
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.findmyspot.auth.model.ApiAuthService
 import com.example.findmyspot.components.MenuLateral
+import com.example.findmyspot.helpers.getRetrofitUsuarios
+import com.example.findmyspot.metodospago.model.ApiMetodoPagoService
+import com.example.findmyspot.metodospago.model.MetodoPago
+import com.example.findmyspot.metodospago.model.NuevoMetodoPago
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import retrofit2.Response
 
 class AddCreditCard : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -51,6 +64,7 @@ class AddCreditCard : ComponentActivity() {
         var numeroTarjeta by remember { mutableStateOf("") }
         var fechaVencimiento by remember { mutableStateOf("") }
         var cvv by remember { mutableStateOf("") }
+        val context = LocalContext.current
 
         // Formatear el número de tarjeta
         val formattedCreditCard = formatCreditCardNumber(numeroTarjeta)
@@ -133,7 +147,39 @@ class AddCreditCard : ComponentActivity() {
             }
 
             Spacer(modifier = Modifier.height(10.dp))
-            Button(onClick = { /*TODO*/ }) {
+            Button(onClick = {
+
+                val sharedPreferences = getSharedPreferences("FindMySpot", Context.MODE_PRIVATE)
+                val idUsuario = sharedPreferences.getInt("id", 0)
+
+                val nuevoMetodoPago = NuevoMetodoPago(idUsuario,numeroTarjeta,fechaVencimiento,cvv,nombre,1000)
+
+                println(nuevoMetodoPago)
+
+                CoroutineScope(Dispatchers.IO).launch {
+                    try {
+                        val call : Response<Int> = getRetrofitUsuarios().create(ApiMetodoPagoService::class.java).nuevoMetodoPago(nuevoMetodoPago)
+                        if(call.isSuccessful){
+                            val intent = Intent(context, MetodosPago::class.java)
+                            context.startActivity(intent)
+                            finish()
+                        } else{
+                            // La solicitud no fue exitosa. Puedes manejar el error aquí.
+                            val errorBody = call.errorBody()
+                            if (errorBody != null) {
+                                val errorMessage = errorBody.string()
+                                println("Error en la solicitud: $errorMessage")
+                            } else {
+                                println("Error en la solicitud, pero no se pudo obtener el mensaje de error.")
+                            }
+                        }
+                    }catch (e:Exception){
+                        println("Error: ${e.message}")
+                    }
+                }
+
+
+            }) {
                 Text(text = "Agregar tarjeta")
             }
         }

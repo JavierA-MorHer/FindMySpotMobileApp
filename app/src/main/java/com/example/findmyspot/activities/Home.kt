@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -49,11 +50,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment.Companion.End
+import androidx.compose.ui.Alignment.Companion.Start
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.findmyspot.components.MenuLateral
@@ -82,10 +92,14 @@ import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.findmyspot.R
 import com.example.findmyspot.helpers.getRetrofitPagos
 import com.example.findmyspot.helpers.getRetrofitSalidas
+import com.example.findmyspot.helpers.getRetrofitUsuarios
+import com.example.findmyspot.metodospago.model.ApiMetodoPagoService
+import com.example.findmyspot.metodospago.model.MetodoPago
 import com.example.findmyspot.pagos.model.ApiPagosService
 import com.example.findmyspot.pagos.model.Pago
 import com.example.findmyspot.salidas.model.ApiSalidaService
 import com.example.findmyspot.salidas.model.NuevaSalida
+import retrofit2.Response
 
 var primaryColor = Color(0xFF228B22)
 val secondaryColor = Color(0xFFD9D9D9)
@@ -523,16 +537,58 @@ class Home : ComponentActivity() {
         }
     }
 
+    private suspend fun getMetodosDePagoByUser(): Array<MetodoPago> {
+        val sharedPreferences = getSharedPreferences("FindMySpot", Context.MODE_PRIVATE)
+        val idUsuario = sharedPreferences.getInt("id", 0)
+
+        return CoroutineScope(Dispatchers.IO).async {
+            try {
+                val call = getRetrofitUsuarios().create(ApiMetodoPagoService::class.java).getMetodosPagoPorUsuario(idUsuario)
+                if (call.isSuccessful) {
+                    val metodosPagoList: Array<MetodoPago>? = call.body()
+
+                    if (metodosPagoList != null) {
+                        return@async metodosPagoList
+                    }
+                } else {
+                    // Manejar el error de la solicitud de manera apropiada
+                }
+                return@async emptyArray<MetodoPago>() // Devolver una lista vacía en caso de error
+            } catch (e: Exception) {
+                // Manejar la excepción de manera apropiada
+                return@async emptyArray<MetodoPago>()
+            }
+        }.await()
+    }
+
     @Composable
     private fun ModalQR(onDismiss: () -> Unit) {
         var selectedListItem by remember { mutableStateOf<ListItem?>(null) }
         var isButtonEnabled by remember { mutableStateOf(false) }
         var isDialogOpen by remember { mutableStateOf(false) }
+        var isCharging by remember { mutableStateOf(true) }
 
+
+        var metodosDePagoList by remember { mutableStateOf(emptyArray<MetodoPago>()) }
+        var emptyMetodoPago = MetodoPago(0,0,"","","","",0)
+
+        var selectedMetodoPago by remember { mutableStateOf(emptyMetodoPago) }
+
+        val textStyle = TextStyle(
+            color = primaryColor,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold,
+
+        )
+
+        LaunchedEffect(Unit) {
+            metodosDePagoList = getMetodosDePagoByUser()
+            isCharging = false
+        }
 
         Dialog(
             onDismissRequest = { onDismiss() },
-            properties = DialogProperties(dismissOnClickOutside = true),
+            properties = DialogProperties(dismissOnClickOutside = false),
         ) {
             Surface(
                 shape = RoundedCornerShape(16.dp),
@@ -544,17 +600,41 @@ class Home : ComponentActivity() {
                             .padding(16.dp)
                     ) {
                         Text(text = "Selecciona un método de pago para continuar")
-                        
-                        SelectableList(
-                            items = listOf(
-                                ListItem(id = 1, text = "Tarjeta Terminacion 6789"),
-                                // Add more items as needed
-                            )
-                        ) { selectedItem ->
-                            // Handle item selection here
-                            selectedListItem = selectedItem
-                            isButtonEnabled = true
+
+                        if(isCharging){
+                            Spacer(modifier = Modifier.height(15.dp))
+                            Text(text = "Cargando...", fontWeight = FontWeight.Bold, fontSize = 17.sp)
                         }
+                       if (metodosDePagoList.isEmpty() && !isCharging){
+                           Spacer(modifier = Modifier.height(15.dp))
+                           Column() {
+                               Text(text = "No tienes metodo de pago registrados", fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                               ClickableText(
+                                   text = buildAnnotatedString {
+                                       withStyle(style = SpanStyle(textDecoration = TextDecoration.Underline)) {
+                                           append("Agregar uno aquí")
+                                       }
+                                   },
+                                   modifier = Modifier.align(Start),
+                                   style = textStyle,
+                                   onClick = {
+                                       abrirMetodosPago()
+                                   })
+                           }
+
+                       }
+                        LazyColumn {
+                            items(metodosDePagoList) { metodoPago ->
+                                MetodoPagoItem(
+                                    metodoPago = metodoPago,
+                                    isSelected = metodoPago == selectedMetodoPago,
+                                    onSelected = {
+                                        selectedMetodoPago = it
+                                        isButtonEnabled = true }
+                                )
+                            }
+                        }
+
                         Row( ) {
                             Button(
                                 onClick = { onDismiss() },
@@ -566,7 +646,9 @@ class Home : ComponentActivity() {
                             }
                             Spacer(modifier = Modifier.width(10.dp))
                             Button(
-                                onClick = { isDialogOpen = true },
+                                onClick = {
+                                    isDialogOpen = true
+                                          },
                                 colors = ButtonDefaults.buttonColors(primaryColor),
                                 enabled = isButtonEnabled,
                                 modifier = Modifier
@@ -581,7 +663,73 @@ class Home : ComponentActivity() {
 
         }
         if (isDialogOpen) {
-            ModalQRSalida(onDismiss = { isDialogOpen = false },selectedListItem?.id)
+            ModalQRSalida(onDismiss = { isDialogOpen = false }, selectedMetodoPago.id_MetodoPago)
+        }
+    }
+
+    private fun abrirMetodosPago() {
+        val intent = Intent(this, AddCreditCard::class.java)
+        startActivity(intent)
+    }
+
+    @Composable
+    fun MetodoPagoItem(
+        metodoPago: MetodoPago,
+        isSelected: Boolean,
+        onSelected: (MetodoPago) -> Unit
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp)
+                .background(if (isSelected) Color.Gray else Color.Transparent)
+                .clickable { onSelected(metodoPago) }
+                .padding(16.dp)
+        ) {
+            BeautifulCard(metodoPago)
+
+
+
+
+
+        }
+    }
+
+    @Composable
+    fun BeautifulCard(metodoPago:MetodoPago) {
+        androidx.compose.material3.Card(
+            modifier = Modifier
+                .fillMaxWidth()
+
+                .shadow(8.dp, RoundedCornerShape(16.dp))
+                .clip(RoundedCornerShape(16.dp))
+                .background(MaterialTheme.colorScheme.tertiary)
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(16.dp)
+            ) {
+                Text(
+                    text = "Tarjeta con terminación ${metodoPago.numero_Tarjeta.takeLast(4)}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "Fecha de vencimiento: ${metodoPago.fecha_Vencimiento}",
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "Propietario: ${metodoPago.propietario}",
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
         }
     }
 
@@ -598,7 +746,7 @@ class Home : ComponentActivity() {
 
         Dialog(
             onDismissRequest = { onDismiss() },
-            properties = DialogProperties(dismissOnClickOutside = true),
+            properties = DialogProperties(dismissOnClickOutside = false),
         ) {
             Surface(
                 shape = RoundedCornerShape(16.dp),
