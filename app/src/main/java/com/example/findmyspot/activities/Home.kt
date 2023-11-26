@@ -116,6 +116,7 @@ class Home : ComponentActivity() {
         if (isInternetAvailable(this)) {
             val menu = MenuLateral()
             setContent{
+
                 menu.MenuLateral { HomeComponent() }
             }
         }else{
@@ -155,18 +156,21 @@ class Home : ComponentActivity() {
         val sharedPreferences = getSharedPreferences("FindMySpot", Context.MODE_PRIVATE)
         val nombre = sharedPreferences.getString("nombre", null)
 
+        var entradaActiva = sharedPreferences.getBoolean("EstanciaActiva", false)
+        val idUsuario = sharedPreferences.getInt("id", 0)
+        val idUsuarioEntrada = sharedPreferences.getInt("idUsuarioEntrada", 0)
 
-
-        val entradaActiva = sharedPreferences.getBoolean("EstanciaActiva", false)
+        if(idUsuario != idUsuarioEntrada){
+            entradaActiva = false
+        }
 
         var visitasRecientes by remember { mutableStateOf(emptyArray<EntradaReciente>()) }
+        var isCharging by remember { mutableStateOf(true) }
 
         LaunchedEffect(Unit) {
             visitasRecientes = getListaRecientes()
-
-
+            isCharging = false
         }
-
 
         val context = LocalContext.current
         var isVisible by remember { mutableStateOf(false) }
@@ -193,18 +197,23 @@ class Home : ComponentActivity() {
                     }
                 }
 
-
-                if(visitasRecientes.isNotEmpty()){
+                if(isCharging){
                     Spacer(modifier = Modifier.height(15.dp))
-                    Text(text = "Tus visitas más recientes", fontSize = 20.sp, textAlign = TextAlign.Center)
-                    LazyColumn {
-                        items(visitasRecientes) { entrada ->
-                            Card(entrada)
-                        }
-                    }
+                    Text(text = "Cargando...", fontWeight = FontWeight.Bold, fontSize = 20.sp)
                 }else{
+                    Spacer(modifier = Modifier.height(15.dp))
+                    Text(text = "Tus visitas más recientes", fontSize = 20.sp, textAlign = TextAlign.Center, )
+                }
 
+                if(visitasRecientes.isEmpty() && !isCharging){
                     LottieEmpty( )
+                }
+
+
+                LazyColumn {
+                    items(visitasRecientes) { entrada ->
+                        Card(entrada)
+                    }
                 }
 
             }
@@ -261,6 +270,9 @@ class Home : ComponentActivity() {
     fun EstanciaEnCurso(tarifaPorMinuto:BigDecimal) {
         var estacionamientoActual by remember{ mutableStateOf("Cargando...") }
         val sharedPreferences = getSharedPreferences("FindMySpot", Context.MODE_PRIVATE)
+
+
+
         val horaEntrada = sharedPreferences.getString("HoraInicio", null)
 
         var tiempoAcumulado by remember { mutableStateOf(Duration.ZERO) }

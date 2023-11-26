@@ -28,6 +28,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -107,6 +108,24 @@ class Login : ComponentActivity() {
         context.startActivity(intent)
     }
 
+    @Composable
+    fun BasicDialog(
+        title: String,
+        message: String,
+        onDismiss: () -> Unit
+    ) {
+        AlertDialog(
+            onDismissRequest = { onDismiss() },
+            title = { Text(title) },
+            text = { Text(message) },
+            confirmButton = {},
+            dismissButton = {
+                onDismiss()
+            }
+
+        )
+    }
+
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun LoginComponent() {
@@ -117,6 +136,8 @@ class Login : ComponentActivity() {
         var showLoadingDialog by remember { mutableStateOf(false) }
         var showErrorDialog by remember { mutableStateOf(false) }
         var msgError by remember { mutableStateOf("") }
+        var isDialogVisible by remember { mutableStateOf(true) }
+
 
         if (showLoadingDialog) {
             AlertDialog(
@@ -200,6 +221,15 @@ class Login : ComponentActivity() {
             Button(onClick = {
                 if (emailInputValue.isNotEmpty() && passwordInputValue.isNotEmpty()){
 
+                    val sharedPreferences = getSharedPreferences("FindMySpot", Context.MODE_PRIVATE)
+                    val nombre = sharedPreferences.getString("nombre", null)
+
+                    var entradaActiva = sharedPreferences.getBoolean("EstanciaActiva", false)
+                    val idUsuarioEntrada = sharedPreferences.getInt("idUsuarioEntrada", 0)
+                    val email = sharedPreferences.getString("email", null)
+                    val apellidoPaterno = sharedPreferences.getString("apellidoPaterno", null)
+
+
                     showLoadingDialog = true
 
                     val requestBody = User(email = emailInputValue, password = passwordInputValue)
@@ -210,12 +240,23 @@ class Login : ComponentActivity() {
                                 val usuario = call.body()
 
                                 if (usuario != null) {
-                                    setSharedPreferences(usuario)
-                                    val intent = Intent(context, Home::class.java)
-                                    context.startActivity(intent)
+                                    if (!entradaActiva){
+                                        setSharedPreferences(usuario)
+                                        val intent = Intent(context, Home::class.java)
+                                        context.startActivity(intent)
+                                    }else{
+                                        if(idUsuarioEntrada != usuario.id_Usuario.toInt()){
+                                            msgError = "El usuario $nombre $apellidoPaterno ($email) tiene una estancia en curso, finalicela para continuar."
+                                            showLoadingDialog = false
+                                            showErrorDialog = true
+                                        }else{
+                                            setSharedPreferences(usuario)
+                                            val intent = Intent(context, Home::class.java)
+                                            context.startActivity(intent)
+                                        }
+
+                                    }
                                 }
-
-
                             } else{
                                 msgError = "El usuario y/o contraseña son incorrectos"
                                 showLoadingDialog = false
@@ -260,7 +301,6 @@ class Login : ComponentActivity() {
             }
         }
     }
-
     @Preview(showBackground = true)
     @Composable
     fun GreetingPreview() {

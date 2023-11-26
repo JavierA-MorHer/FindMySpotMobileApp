@@ -193,12 +193,16 @@ class NewQR : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.O)
     private fun setEntradaActiva(idEstacionamiento:Int,idEntrada: Int) {
         val sharedPreferences = getSharedPreferences("FindMySpot", Context.MODE_PRIVATE)
+        val idUsuario = sharedPreferences.getInt("id", 0)
+
         val editor = sharedPreferences.edit()
 
         editor.putBoolean("EstanciaActiva", true)
         editor.putString("HoraInicio",obtenerHoraYMinutos())
         editor.putInt("idEstacionamiento", idEstacionamiento)
         editor.putInt("idEntrada", idEntrada)
+        editor.putInt("idUsuarioEntrada", idUsuario)
+
 
 
         editor.apply()
